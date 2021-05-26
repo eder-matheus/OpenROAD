@@ -107,9 +107,6 @@ std::vector<OrderTree> treeOrderCong;
 int numTreeedges;
 int viacost;
 
-int** layerGrid;
-int** viaLink;
-
 multi_array<int, 3> d13D;
 multi_array<short, 3> d23D;
 

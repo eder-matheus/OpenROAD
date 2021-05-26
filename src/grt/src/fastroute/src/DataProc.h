@@ -119,9 +119,6 @@ extern int viacost;
 extern Edge3D* h_edges3D;
 extern Edge3D* v_edges3D;
 
-extern int** layerGrid;
-extern int** viaLink;
-
 extern multi_array<int, 3> d13D;
 extern multi_array<short, 3> d23D;
 

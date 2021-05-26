@@ -445,6 +445,8 @@ void assignEdge(int netID, int edgeID, Bool processDIR)
 {
   short *gridsX, *gridsY, *gridsL;
   std::vector<std::vector<int>> gridD;
+  std::vector<std::vector<int>> layerGrid;
+  std::vector<std::vector<int>> viaLink;
   int i, k, l, grid, min_x, min_y, routelen, n1a, n2a, last_layer;
   int min_result, endLayer;
   TreeEdge *treeedges, *treeedge;
@@ -465,6 +467,16 @@ void assignEdge(int netID, int edgeID, Bool processDIR)
   gridD.resize(numLayers);
   for (int i = 0; i < numLayers; i++) {
     gridD[i].resize(treeedge->route.routelen+1);
+  }
+
+  layerGrid.resize(numLayers);
+  for (int i = 0; i < numLayers; i++) {
+    layerGrid[i].resize(treeedge->route.routelen+1);
+  }
+
+  viaLink.resize(numLayers);
+  for (int i = 0; i < numLayers; i++) {
+    viaLink[i].resize(treeedge->route.routelen+1);
   }
 
   for (l = 0; l < numLayers; l++) {

@@ -307,28 +307,6 @@ void FastRouteCore::deleteComponents()
   gridHs = nullptr;
   gridVs = nullptr;
 
-  if (layerGrid) {
-    for (int i = 0; i < numLayers; i++) {
-      if (layerGrid[i])
-        delete[] layerGrid[i];
-      layerGrid[i] = nullptr;
-    }
-
-    delete[] layerGrid;
-    layerGrid = nullptr;
-  }
-
-  if (viaLink) {
-    for (int i = 0; i < numLayers; i++) {
-      if (viaLink[i])
-        delete[] viaLink[i];
-      viaLink[i] = nullptr;
-    }
-
-    delete[] viaLink;
-    viaLink = nullptr;
-  }
-
   if (costHVH)
     delete[] costHVH;
   if (costVHV)
@@ -395,16 +373,6 @@ void FastRouteCore::setGridsAndLayers(int x, int y, int nLayers)
   ViaSpacing = new int[numLayers];
   gridHs = new int[numLayers];
   gridVs = new int[numLayers];
-
-  layerGrid = new int*[numLayers];
-  for (int i = 0; i < numLayers; i++) {
-    layerGrid[i] = new int[MAXLEN];
-  }
-
-  viaLink = new int*[numLayers];
-  for (int i = 0; i < numLayers; i++) {
-    viaLink[i] = new int[MAXLEN];
-  }
 
   d13D.resize(boost::extents[numLayers][YRANGE][XRANGE]);
   d23D.resize(boost::extents[numLayers][YRANGE][XRANGE]);
