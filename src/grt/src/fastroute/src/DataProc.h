@@ -120,7 +120,6 @@ extern Edge3D* h_edges3D;
 extern Edge3D* v_edges3D;
 
 extern int** layerGrid;
-extern int** gridD;
 extern int** viaLink;
 
 extern multi_array<int, 3> d13D;

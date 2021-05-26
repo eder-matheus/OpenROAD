@@ -444,6 +444,7 @@ int threeDVIA()
 void assignEdge(int netID, int edgeID, Bool processDIR)
 {
   short *gridsX, *gridsY, *gridsL;
+  std::vector<std::vector<int>> gridD;
   int i, k, l, grid, min_x, min_y, routelen, n1a, n2a, last_layer;
   int min_result, endLayer;
   TreeEdge *treeedges, *treeedge;
@@ -460,6 +461,11 @@ void assignEdge(int netID, int edgeID, Bool processDIR)
   routelen = treeedge->route.routelen;
   n1a = treeedge->n1a;
   n2a = treeedge->n2a;
+
+  gridD.resize(numLayers);
+  for (int i = 0; i < numLayers; i++) {
+    gridD[i].resize(treeedge->route.routelen+1);
+  }
 
   for (l = 0; l < numLayers; l++) {
     for (k = 0; k <= routelen; k++) {

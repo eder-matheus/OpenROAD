@@ -318,17 +318,6 @@ void FastRouteCore::deleteComponents()
     layerGrid = nullptr;
   }
 
-  if (gridD) {
-    for (int i = 0; i < numLayers; i++) {
-      if (gridD[i])
-        delete[] gridD[i];
-      gridD[i] = nullptr;
-    }
-
-    delete[] gridD;
-    gridD = nullptr;
-  }
-
   if (viaLink) {
     for (int i = 0; i < numLayers; i++) {
       if (viaLink[i])
@@ -410,11 +399,6 @@ void FastRouteCore::setGridsAndLayers(int x, int y, int nLayers)
   layerGrid = new int*[numLayers];
   for (int i = 0; i < numLayers; i++) {
     layerGrid[i] = new int[MAXLEN];
-  }
-
-  gridD = new int*[numLayers];
-  for (int i = 0; i < numLayers; i++) {
-    gridD[i] = new int[MAXLEN];
   }
 
   viaLink = new int*[numLayers];

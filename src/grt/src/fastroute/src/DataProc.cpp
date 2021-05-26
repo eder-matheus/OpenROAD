@@ -108,7 +108,6 @@ int numTreeedges;
 int viacost;
 
 int** layerGrid;
-int** gridD;
 int** viaLink;
 
 multi_array<int, 3> d13D;
