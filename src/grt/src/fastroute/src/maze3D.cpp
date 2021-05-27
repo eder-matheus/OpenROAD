@@ -1696,7 +1696,7 @@ void mazeRouteMSMDOrder3D(int expand, int ripupTHlb, int ripupTHub)
               treenodes[d].status = 0;
 
               if (d < deg) {
-                treenodes[d].botL = treenodes[d].topL = 0;
+                treenodes[d].botL = treenodes[d].topL = nets[netID]->pinL[d];
                 // treenodes[d].l = 0;
                 treenodes[d].assigned = TRUE;
                 treenodes[d].status = 1;
