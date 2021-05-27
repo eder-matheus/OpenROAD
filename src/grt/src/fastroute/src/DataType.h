@@ -127,6 +127,7 @@ typedef struct
   int lID;
   int eID[6];
   int stackAlias;
+  bool isPin;
 } TreeNode;
 
 #define NOROUTE 0
