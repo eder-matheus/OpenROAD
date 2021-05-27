@@ -492,12 +492,20 @@ void assignEdge(int netID, int edgeID, Bool processDIR)
       for (l = 0; l < numLayers; l++) {
         grid = l * gridV + min_y * xGrid + gridsX[k];
         layerGrid[l][k] = v_edges3D[grid].cap - v_edges3D[grid].usage;
+        if ((l < treenodes[n1a].topL && treenodes[n1a].isPin) ||
+            (l < treenodes[n2a].topL && treenodes[n2a].isPin)) {
+          layerGrid[l][k] = -1;
+        }
       }
     } else {
       min_x = std::min(gridsX[k], gridsX[k + 1]);
       for (l = 0; l < numLayers; l++) {
         grid = l * gridH + gridsY[k] * (xGrid - 1) + min_x;
         layerGrid[l][k] = h_edges3D[grid].cap - h_edges3D[grid].usage;
+        if ((l < treenodes[n1a].topL && treenodes[n1a].isPin) ||
+            (l < treenodes[n2a].topL && treenodes[n2a].isPin)) {
+          layerGrid[l][k] = -1;
+        }
       }
     }
   }
@@ -916,7 +924,9 @@ void newLA()
       treenodes[d].status = 0;
 
       if (d < deg) {
-        treenodes[d].botL = treenodes[d].topL = 0;
+        treenodes[d].botL = nets[netID]->pinL[d];
+        treenodes[d].topL = nets[netID]->pinL[d];
+        treenodes[d].isPin = true;
         // treenodes[d].l = 0;
         treenodes[d].assigned = TRUE;
         treenodes[d].status = 1;
@@ -927,6 +937,7 @@ void newLA()
         numpoints++;
       } else {
         redundant = FALSE;
+        treenodes[d].isPin = false;
         for (k = 0; k < numpoints; k++) {
           if ((treenodes[d].x == xcor[k]) && (treenodes[d].y == ycor[k])) {
             treenodes[d].stackAlias = dcor[k];
@@ -1031,7 +1042,7 @@ void checkRoute3D()
     for (nodeID = 0; nodeID < 2 * deg - 2; nodeID++) {
       if (nodeID < deg) {
         if (treenodes[nodeID].botL != 0) {
-          logger->error(GRT, 203, "Causing pin node floating.");
+          // logger->error(GRT, 203, "Causing pin node floating.");
         }
       }
     }
