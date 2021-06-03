@@ -106,6 +106,7 @@ void GlobalRouter::makeComponents()
   _gridOrigin = new odb::Point(0, 0);
   _nets = new std::vector<Net>;
   _sta = _openroad->getSta();
+  _resizer = _openroad->getResizer();
   _routingLayers = new std::vector<RoutingLayer>;
 }
 

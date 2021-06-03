@@ -71,5 +71,6 @@ target_link_libraries(grt
     gui
     pdrev
     OpenSTA
+    rsz
     Boost::boost
 )

@@ -70,6 +70,10 @@ class dbSta;
 class dbNetwork;
 }  // namespace sta
 
+namespace rsz {
+class Resizer;
+} // namespace rsz
+
 namespace grt {
 
 class FastRouteCore;
@@ -283,6 +287,7 @@ class GlobalRouter
 
   ord::OpenRoad* _openroad;
   utl::Logger *_logger;
+  rsz::Resizer* _resizer;
   gui::Gui *_gui;
   // Objects variables
   FastRouteCore* _fastRoute;
