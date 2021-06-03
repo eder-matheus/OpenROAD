@@ -52,6 +52,8 @@ class Net
   const std::string getName() const;
   const char* getConstName() const;
   odb::dbSigType getSignalType() const;
+  void setTimingCritical() { _timingCritical = true; }
+  bool isTimingCritical() { return _timingCritical; }
   void addPin(Pin& pin);
   std::vector<Pin>& getPins() { return _pins; }
   int getNumPins() const { return _pins.size(); }
@@ -61,6 +63,7 @@ class Net
  private:
   odb::dbNet* _net;
   std::vector<Pin> _pins;
+  bool _timingCritical;
 };
 
 }  // namespace grt
