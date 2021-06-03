@@ -216,6 +216,7 @@ class GlobalRouter
   void computeWirelength();
   std::vector<Pin*> getAllPorts();
   int computeTrackConsumption(const Net* net, std::vector<int>& edgeCostsPerLayer);
+  bool findTimingCriticalNets();
 
   // aux functions
   void findPins(Net* net);

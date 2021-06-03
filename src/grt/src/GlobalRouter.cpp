@@ -60,9 +60,12 @@
 #include "opendb/dbShape.h"
 #include "opendb/wOrder.h"
 #include "ord/OpenRoad.hh"
+#include "rsz/Resizer.hh"
 #include "sta/Clock.hh"
 #include "sta/Parasitics.hh"
 #include "sta/Set.hh"
+#include "sta/Liberty.hh"
+#include "sta/Fuzzy.hh"
 #include "utl/Logger.h"
 
 namespace grt {
@@ -341,6 +344,41 @@ void GlobalRouter::estimateRC()
       builder.estimateParasitcs(db_net, net->getPins(), route);
     }
   }
+}
+
+bool GlobalRouter::findTimingCriticalNets()
+{
+  std::vector<float> slackValues;
+  std::map<odb::dbNet*, float> slackPerNet;
+
+  _resizer->estimateWireParasitics();
+  _sta->updateTiming(false);
+
+  sta::Slack curWns;
+  sta::Vertex* worstVertex = NULL;
+
+  _sta->worstSlack(sta::MinMax::max(), curWns, worstVertex);
+  sta::Slack curTns 
+    = _sta->totalNegativeSlack(sta::MinMax::max());
+
+  if (sta::fuzzyInf(curWns)) {
+    _logger->warn(GRT, 225, "Clock is not initialized. Timing-critical nets will not be detected.");
+    return false;
+  } else if( curWns >= 0 ) {
+    _logger->warn(GRT, 226, "Positive WNS. Timing-critical nets will not be detected.");
+    return false;
+  }
+
+  for (Net& net : *_nets) {
+    sta::Net* staNet 
+      = _sta->getDbNetwork()->dbToSta(net.getDbNet());
+
+    float netSlack = _sta->netSlack(staNet, sta::MinMax::max());
+    slackValues.push_back(netSlack);
+    slackPerNet[net.getDbNet()] = netSlack;
+  }
+
+  return true;
 }
 
 void GlobalRouter::initCoreGrid(int maxRoutingLayer)
