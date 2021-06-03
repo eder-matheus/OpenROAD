@@ -375,18 +375,22 @@ bool GlobalRouter::findTimingCriticalNets(float worstNetsPercentage)
       = _sta->getDbNetwork()->dbToSta(net.getDbNet());
 
     float netSlack = _sta->netSlack(staNet, sta::MinMax::max());
-    slackValues.push_back(netSlack);
-    slackPerNet[net.getDbNet()] = netSlack;
+    if (netSlack < 0) {
+      slackValues.push_back(netSlack);
+      slackPerNet[net.getDbNet()] = netSlack;
+    }
   }
 
-  std::sort(slackValues.begin(), slackValues.end());
+  if (!slackValues.empty()) {
+    std::sort(slackValues.begin(), slackValues.end());
 
-  int slackIdx = slackValues.size() * worstNetsPercentage;
-  float maxSlack = slackValues[slackIdx];
+    int slackIdx = slackValues.size() * worstNetsPercentage;
+    float maxSlack = slackValues[slackIdx];
 
-  for (Net& net : *_nets) {
-    if (slackPerNet[net.getDbNet()] < maxSlack) {
-      net.setTimingCritical();
+    for (Net& net : *_nets) {
+      if (slackPerNet[net.getDbNet()] < maxSlack) {
+        net.setTimingCritical();
+      }
     }
   }
 
