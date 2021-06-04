@@ -741,6 +741,10 @@ void GlobalRouter::initializeNets(std::vector<Net*>& nets)
   _fastRoute->setNumberNets(validNets);
   _fastRoute->setMaxNetDegree(getMaxNetDegree());
 
+  if (_criticalNetsPercentage > 0) {
+    findTimingCriticalNets(_criticalNetsPercentage);
+  }
+
   for (Net* net : nets) {
     int pin_count = net->getNumPins();
     if (pin_count > 1) {

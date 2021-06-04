@@ -329,8 +329,8 @@ class GlobalRouter
   int _minLayerForClock = -1;
   int _maxLayerForClock = -2;
 
-  // temporary for congestion driven replace
-  int _numAdjusts = 0;
+  // timing driven variables
+  int _criticalNetsPercentage = 0;
 
   // Variables for PADs obstructions handling
   std::map<odb::dbNet*, std::vector<GSegment>> _padPinsConnections;
