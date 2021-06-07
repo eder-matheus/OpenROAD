@@ -152,6 +152,18 @@ set_macro_extension(int macroExtension)
 }
 
 void
+set_critical_nets_percentage(float percent)
+{
+  getFastRoute()->setCriticalNetsPercentage(percent);
+}
+
+void
+set_max_negative_slack(float max_slack)
+{
+  getFastRoute()->setMaxNegativeSlack(max_slack);
+}
+
+void
 global_route()
 {
   getFastRoute()->globalRoute();

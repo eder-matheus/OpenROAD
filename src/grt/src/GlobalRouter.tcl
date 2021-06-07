@@ -160,7 +160,7 @@ sta::define_cmd_args "set_clock_routing" { [-clock_pdrev_fanout fanout] \
 }
 
 proc set_clock_routing { args } {
-  sta::parse_key_args "global_route" args \
+  sta::parse_key_args "set_clock_routing" args \
     keys { -clock_pdrev_fanout \
            -clock_topology_priority
          }
@@ -181,6 +181,30 @@ proc set_clock_routing { args } {
     grt::set_pdrev_for_high_fanout $fanout
   } else {
     grt::set_pdrev_for_high_fanout -1
+  }
+}
+
+sta::define_cmd_args "set_timing_driven" { [-critical_nets_percentage percent] \
+                                           [-max_negative_slack slack]
+}
+
+proc set_timing_driven { args } {
+  sta::parse_key_args "set_timing_driven" args \
+    keys { -critical_nets_percentage \
+           -max_negative_slack
+         }
+
+  if { [info exists keys(-critical_nets_percentage) ] } {
+    set percent $keys(-critical_nets_percentage)
+    sta::check_float "-critical_nets_percentage" $percent
+    grt::set_critical_nets_percentage $percent
+  } else {
+    grt::set_critical_nets_percentage 0
+  }
+
+  if { [info exists keys(-max_negative_slack)] } {
+    set max_slack $keys(-max_negative_slack)
+    grt::set_max_negative_slack $max_slack
   }
 }
 
