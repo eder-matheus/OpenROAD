@@ -179,6 +179,10 @@ class GlobalRouter
   // route clock nets public functions
   void routeClockNets();
 
+  // timing driven public functions
+  void setCriticalNetsPercentage(float percent);
+  void setMaxNegativeSlack(float max_slack);
+
   // Highlight route in the gui.
   void highlightRoute(const odb::dbNet *net);
   // Report the wire length on each layer.
@@ -330,7 +334,8 @@ class GlobalRouter
   int _maxLayerForClock = -2;
 
   // timing driven variables
-  float _criticalNetsPercentage = 0.0;
+  float _criticalNetsPercentage;
+  float _maxNegativeSlack;
 
   // Variables for PADs obstructions handling
   std::map<odb::dbNet*, std::vector<GSegment>> _padPinsConnections;

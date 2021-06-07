@@ -1404,6 +1404,16 @@ void GlobalRouter::setMacroExtension(int macroExtension)
   _macroExtension = macroExtension;
 }
 
+void GlobalRouter::setCriticalNetsPercentage(float percent)
+{
+  _criticalNetsPercentage = percent;
+}
+
+void GlobalRouter::setMaxNegativeSlack(float max_slack)
+{
+  _maxNegativeSlack = max_slack;
+}
+
 void GlobalRouter::writeGuides(const char* fileName)
 {
   std::ofstream guideFile;
