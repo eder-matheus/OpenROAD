@@ -380,12 +380,12 @@ bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
   if (!slack_values.empty()) {
     std::sort(slack_values.begin(), slack_values.end());
 
-    int slack_idx = slack_values.size() * worst_nets_percentage;
+    int slack_idx = (slack_values.size() * worst_nets_percentage) - 1;
     float max_slack = slack_values[slack_idx];
 
     int critical_nets_count = 0;
     for (Net& net : *_nets) {
-      if (slack_per_net[net.getDbNet()] < max_slack) {
+      if (slack_per_net[net.getDbNet()] <= max_slack) {
         net.setTimingCritical();
         critical_nets_count++;
       }
@@ -739,10 +739,6 @@ void GlobalRouter::initializeNets(std::vector<Net*>& nets)
 
   _fastRoute->setNumberNets(validNets);
   _fastRoute->setMaxNetDegree(getMaxNetDegree());
-
-  if (_criticalNetsPercentage > 0) {
-    findTimingCriticalNets(_criticalNetsPercentage);
-  }
 
   for (Net* net : nets) {
     int pin_count = net->getNumPins();
