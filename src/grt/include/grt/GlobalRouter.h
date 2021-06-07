@@ -216,7 +216,7 @@ class GlobalRouter
   void computeWirelength();
   std::vector<Pin*> getAllPorts();
   int computeTrackConsumption(const Net* net, std::vector<int>& edgeCostsPerLayer);
-  bool findTimingCriticalNets(float worstNetsPercentage);
+  bool findTimingCriticalNets(float worst_nets_percentage);
 
   // aux functions
   void findPins(Net* net);
@@ -288,7 +288,7 @@ class GlobalRouter
 
   ord::OpenRoad* _openroad;
   utl::Logger *_logger;
-  rsz::Resizer* _resizer;
+  rsz::Resizer* _rsz;
   gui::Gui *_gui;
   // Objects variables
   FastRouteCore* _fastRoute;
@@ -330,7 +330,7 @@ class GlobalRouter
   int _maxLayerForClock = -2;
 
   // timing driven variables
-  int _criticalNetsPercentage = 0;
+  float _criticalNetsPercentage = 0.0;
 
   // Variables for PADs obstructions handling
   std::map<odb::dbNet*, std::vector<GSegment>> _padPinsConnections;

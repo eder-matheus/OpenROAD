@@ -109,7 +109,7 @@ void GlobalRouter::makeComponents()
   _gridOrigin = new odb::Point(0, 0);
   _nets = new std::vector<Net>;
   _sta = _openroad->getSta();
-  _resizer = _openroad->getResizer();
+  _rsz = _openroad->getResizer();
   _routingLayers = new std::vector<RoutingLayer>;
 }
 
@@ -346,52 +346,51 @@ void GlobalRouter::estimateRC()
   }
 }
 
-bool GlobalRouter::findTimingCriticalNets(float worstNetsPercentage)
+bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
 {
-  std::vector<float> slackValues;
-  std::map<odb::dbNet*, float> slackPerNet;
+  std::vector<float> slack_values;
+  std::map<odb::dbNet*, float> slack_per_net;
 
-  _resizer->estimateWireParasitics();
-  _sta->updateTiming(false);
+  _rsz->resizeSlackPreamble();
+  _rsz->findResizeSlacks();
 
-  sta::Slack curWns;
-  sta::Vertex* worstVertex = NULL;
+  sta::NetSeq &worst_slack_nets = _rsz->resizeWorstSlackNets();
 
-  _sta->worstSlack(sta::MinMax::max(), curWns, worstVertex);
-  sta::Slack curTns 
-    = _sta->totalNegativeSlack(sta::MinMax::max());
-
-  if (sta::fuzzyInf(curWns)) {
-    _logger->warn(GRT, 225, "Clock is not initialized. Timing-critical nets will not be detected.");
-    return false;
-  } else if( curWns >= 0 ) {
-    _logger->warn(GRT, 226, "Positive WNS. Timing-critical nets will not be detected.");
+  if( worst_slack_nets.empty()) {
+    _logger->warn(GRT, 225, "No net slacks found. Timing-driven mode disabled.");
     return false;
   }
 
-  slackValues.reserve(_nets->size());
-  for (Net& net : *_nets) {
-    sta::Net* staNet 
-      = _sta->getDbNetwork()->dbToSta(net.getDbNet());
+  sta::Slack slack_min = _rsz->resizeNetSlack(worst_slack_nets[0]);
+  _logger->info(GRT, 226, "worst slack {:.3g}", slack_min);
 
-    float netSlack = _sta->netSlack(staNet, sta::MinMax::max());
-    if (netSlack < 0) {
-      slackValues.push_back(netSlack);
-      slackPerNet[net.getDbNet()] = netSlack;
+  if (slack_min >= 0) {
+    _logger->warn(GRT, 227, "Positive WNS. Timing-driven mode disabled.");
+    return false;
+  }
+
+  for (Net& net : *_nets) {
+    float net_slack = _rsz->resizeNetSlack(net.getDbNet());
+    if (net_slack < 0) {
+      slack_values.push_back(net_slack);
+      slack_per_net[net.getDbNet()] = net_slack;
     }
   }
 
-  if (!slackValues.empty()) {
-    std::sort(slackValues.begin(), slackValues.end());
+  if (!slack_values.empty()) {
+    std::sort(slack_values.begin(), slack_values.end());
 
-    int slackIdx = slackValues.size() * worstNetsPercentage;
-    float maxSlack = slackValues[slackIdx];
+    int slack_idx = slack_values.size() * worst_nets_percentage;
+    float max_slack = slack_values[slack_idx];
 
+    int critical_nets_count = 0;
     for (Net& net : *_nets) {
-      if (slackPerNet[net.getDbNet()] < maxSlack) {
+      if (slack_per_net[net.getDbNet()] < max_slack) {
         net.setTimingCritical();
+        critical_nets_count++;
       }
     }
+    _logger->info(GRT, 228, "Critical nets: {}", critical_nets_count);
   }
 
   return true;
