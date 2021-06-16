@@ -341,9 +341,9 @@ void IOPlacer::findSlots(const std::set<int>& layers, Edge edge)
     int curr_x, curr_y, start_idx, end_idx;
     // get the on grid min distance
     int min_dst_ver = core_.getMinDstPinsX()[i]*
-                      std::ceil((float)parms_->getMinDistance()/core_.getMinDstPinsX()[i]);
+                      std::ceil(static_cast<float>(parms_->getMinDistance())/core_.getMinDstPinsX()[i]);
     int min_dst_hor = core_.getMinDstPinsY()[i]*
-                      std::ceil((float)parms_->getMinDistance()/core_.getMinDstPinsY()[i]);
+                      std::ceil(static_cast<float>(parms_->getMinDistance())/core_.getMinDstPinsY()[i]);
 
     min_dst_ver = (min_dst_ver == 0) ? default_min_dist*core_.getMinDstPinsX()[i] : min_dst_ver;
     min_dst_hor = (min_dst_hor == 0) ? default_min_dist*core_.getMinDstPinsY()[i] : min_dst_hor;
@@ -375,7 +375,7 @@ void IOPlacer::findSlots(const std::set<int>& layers, Edge edge)
           + num_tracks_offset;
     end_idx
         = std::min((num_tracks - 1),
-                   (int) floor((max - half_width - init_tracks) / min_dst_pins))
+                   static_cast<int>(floor((max - half_width - init_tracks) / min_dst_pins)))
           - num_tracks_offset;
     if (vertical) {
       curr_x = init_tracks + start_idx * min_dst_pins;
@@ -740,15 +740,15 @@ bool IOPlacer::assignPinToSection(IOPin& io_pin, int idx, std::vector<Section>& 
 
 void IOPlacer::printConfig()
 {
-  logger_->info(PPL, 1, " * Num of slots          {}", slots_.size());
-  logger_->info(PPL, 2, " * Num of I/O            {}", netlist_.numIOPins());
+  logger_->info(PPL, 1, "Number of slots          {}", slots_.size());
+  logger_->info(PPL, 2, "Number of I/O            {}", netlist_.numIOPins());
   logger_->info(
-      PPL, 3, " * Num of I/O w/sink     {}", netlist_io_pins_.numIOPins());
-  logger_->info(PPL, 4, " * Num of I/O w/o sink   {}", zero_sink_ios_.size());
-  logger_->info(PPL, 5, " * Slots Per Section     {}", slots_per_section_);
-  logger_->info(PPL, 6, " * Slots Increase Factor {:.1}", slots_increase_factor_);
-  logger_->info(PPL, 8, " * Usage Increase Factor {:.1}", usage_increase_factor_);
-  logger_->info(PPL, 9, " * Force Pin Spread      {}", force_pin_spread_);
+      PPL, 3, "Number of I/O w/sink     {}", netlist_io_pins_.numIOPins());
+  logger_->info(PPL, 4, "Number of I/O w/o sink   {}", zero_sink_ios_.size());
+  logger_->info(PPL, 5, "Slots per section        {}", slots_per_section_);
+  logger_->info(PPL, 6, "Slots increase factor    {:.1}", slots_increase_factor_);
+  logger_->info(PPL, 8, "Usage increase factor    {:.1}", usage_increase_factor_);
+  logger_->info(PPL, 9, "Force pin spread         {}", force_pin_spread_);
 }
 
 void IOPlacer::setupSections(int assigned_pins_count)
@@ -757,7 +757,7 @@ void IOPlacer::setupSections(int assigned_pins_count)
   int i = 0;
 
   do {
-    logger_->info(PPL, 10, "Tentative {} to setup sections", i++);
+    logger_->info(PPL, 10, "Tentative {} to set up sections", i++);
     printConfig();
 
     all_assigned = assignPinsToSections(assigned_pins_count);
@@ -861,7 +861,7 @@ void IOPlacer::updatePinArea(IOPin& pin)
       }
 
       if (height % mfg_grid != 0) {
-        height = mfg_grid*std::ceil((float)height/mfg_grid);
+        height = mfg_grid*std::ceil(static_cast<float>(height)/mfg_grid);
       }
 
       if (pin.getOrientation() == Orientation::north) {
@@ -891,7 +891,7 @@ void IOPlacer::updatePinArea(IOPin& pin)
       }
 
       if (height % mfg_grid != 0) {
-        height = mfg_grid*std::ceil((float)height/mfg_grid);
+        height = mfg_grid*std::ceil(static_cast<float>(height)/mfg_grid);
       }
 
       if (pin.getOrientation() == Orientation::east) {
@@ -907,11 +907,11 @@ void IOPlacer::updatePinArea(IOPin& pin)
     int height = top_grid_.height;
 
     if (width % mfg_grid != 0) {
-      width = mfg_grid*std::ceil((float)width/mfg_grid);
+      width = mfg_grid*std::ceil(static_cast<float>(width)/mfg_grid);
     }
 
     if (height % mfg_grid != 0) {
-      height = mfg_grid*std::ceil((float)height/mfg_grid);
+      height = mfg_grid*std::ceil(static_cast<float>(height)/mfg_grid);
     }
 
     pin.setLowerBound(pin.getX() - width/2, pin.getY() - height/2);
@@ -1018,7 +1018,11 @@ void IOPlacer::initConstraints()
     for (Section sec : constraint.sections) {
       num_slots += sec.num_slots;
     }
-    constraint.pins_per_slots = (float)constraint.pin_list.size()/num_slots;
+    if (num_slots > 0) {
+      constraint.pins_per_slots = static_cast<float>(constraint.pin_list.size())/num_slots;
+    } else {
+      logger_->error(PPL, 76, "Constraint does not have available slots for its pins.");
+    }
   }
   sortConstraints();
 }
@@ -1140,7 +1144,7 @@ void IOPlacer::run(bool random_mode)
     init_hpwl = returnIONetsHPWL(netlist_);
   }
   if (random_mode) {
-    logger_->info(PPL, 3, "Random pin placement.");
+    logger_->info(PPL, 7, "Random pin placement.");
     randomPlacement();
   } else {
     int constrained_pins_cnt = 0;
@@ -1164,9 +1168,9 @@ void IOPlacer::run(bool random_mode)
     updatePinArea(assignment_[i]);
   }
 
-  if (assignment_.size() != (int) netlist_.numIOPins()) {
+  if (assignment_.size() != static_cast<int>(netlist_.numIOPins())) {
     logger_->error(PPL,
-                   41,
+                   39,
                    "Assigned {} pins out of {} IO pins",
                    assignment_.size(),
                    netlist_.numIOPins());
@@ -1192,11 +1196,11 @@ void IOPlacer::placePin(odb::dbBTerm* bterm, int layer, int x, int y, int width,
   block_ = db_->getChip()->getBlock();
   const int mfg_grid = tech_->getManufacturingGrid();
   if (width % mfg_grid != 0) {
-    width = mfg_grid*std::ceil((float)width/mfg_grid);
+    width = mfg_grid*std::ceil(static_cast<float>(width)/mfg_grid);
   }
 
   if (height % mfg_grid != 0) {
-    height = mfg_grid*std::ceil((float)height/mfg_grid);
+    height = mfg_grid*std::ceil(static_cast<float>(height)/mfg_grid);
   }
 
   odb::Point pos = odb::Point(x, y);

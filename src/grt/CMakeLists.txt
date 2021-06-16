@@ -64,13 +64,16 @@ target_include_directories(grt
 target_link_libraries(grt
     utl
     FastRoute4.1
-    pdrev
+    pdr
     ant
     dpl
     dbSta
     gui
-    pdrev
     OpenSTA
     rsz
     Boost::boost
+)
+
+messages(
+  TARGET grt
 )
