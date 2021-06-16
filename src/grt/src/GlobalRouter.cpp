@@ -357,15 +357,15 @@ bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
   sta::NetSeq &worst_slack_nets = _rsz->resizeWorstSlackNets();
 
   if( worst_slack_nets.empty()) {
-    _logger->warn(GRT, 225, "No net slacks found. Timing-driven mode disabled.");
+    _logger->warn(GRT, 227, "No net slacks found. Timing-driven mode disabled.");
     return false;
   }
 
   sta::Slack slack_min = _rsz->resizeNetSlack(worst_slack_nets[0]);
-  _logger->info(GRT, 226, "worst slack {:.3g}", slack_min);
+  _logger->info(GRT, 228, "worst slack {:.3g}", slack_min);
 
   if (slack_min >= 0) {
-    _logger->warn(GRT, 227, "Positive WNS. Timing-driven mode disabled.");
+    _logger->warn(GRT, 229, "Positive WNS. Timing-driven mode disabled.");
     return false;
   }
 
@@ -390,7 +390,7 @@ bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
         critical_nets_count++;
       }
     }
-    _logger->info(GRT, 228, "Critical nets: {}", critical_nets_count);
+    _logger->info(GRT, 230, "Critical nets: {}", critical_nets_count);
   }
 
   return true;
