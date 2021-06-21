@@ -164,6 +164,12 @@ set_max_negative_slack(float max_slack)
 }
 
 void
+set_timing_critical_min_area(int min_area)
+{
+  getFastRoute()->setTimingCriticalMinArea(min_area);
+}
+
+void
 global_route()
 {
   getFastRoute()->globalRoute();

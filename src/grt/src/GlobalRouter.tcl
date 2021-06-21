@@ -185,14 +185,18 @@ proc set_clock_routing { args } {
 }
 
 sta::define_cmd_args "set_timing_driven" { [-critical_nets_percentage percent] \
-                                           [-max_negative_slack slack]
+                                           [-max_negative_slack slack] \
+                                           [-min_area min_area]
 }
 
 proc set_timing_driven { args } {
   sta::parse_key_args "set_timing_driven" args \
     keys { -critical_nets_percentage \
-           -max_negative_slack
+           -max_negative_slack -min_area
          }
+
+  set tech [ord::get_db_tech]
+  set lef_units [$tech getLefUnits]
 
   if { [info exists keys(-critical_nets_percentage) ] } {
     set percent $keys(-critical_nets_percentage)
@@ -205,6 +209,16 @@ proc set_timing_driven { args } {
   if { [info exists keys(-max_negative_slack)] } {
     set max_slack $keys(-max_negative_slack)
     grt::set_max_negative_slack $max_slack
+  } else {
+    grt::set_max_negative_slack 0
+  }
+
+  if { [info exists keys(-min_area)] } {
+    set min_area $keys(-min_area)
+    sta::check_positive_float "-min_area" $min_area
+    grt::set_timing_critical_min_area [expr { int($min_area * $lef_units * $lef_units) }]
+  } else {
+    grt::set_timing_critical_min_area 0
   }
 }
 
