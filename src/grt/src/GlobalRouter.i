@@ -170,6 +170,12 @@ set_timing_critical_min_area(int min_area)
 }
 
 void
+set_timing_critical_min_fanout(int fanout)
+{
+  getFastRoute()->setTimingCriticalMinFanout(fanout);
+}
+
+void
 global_route()
 {
   getFastRoute()->globalRoute();

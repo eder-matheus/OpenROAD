@@ -183,6 +183,7 @@ class GlobalRouter
   void setCriticalNetsPercentage(float percent);
   void setMaxNegativeSlack(float max_slack);
   void setTimingCriticalMinArea(int min_area);
+  void setTimingCriticalMinFanout(int fanout);
 
   // Highlight route in the gui.
   void highlightRoute(const odb::dbNet *net);
@@ -339,6 +340,7 @@ class GlobalRouter
   float _criticalNetsPercentage;
   float _maxNegativeSlack;
   int timing_critical_min_area_;
+  int timing_critical_min_fanout_;
 
   // Variables for PADs obstructions handling
   std::map<odb::dbNet*, std::vector<GSegment>> _padPinsConnections;

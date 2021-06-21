@@ -186,13 +186,15 @@ proc set_clock_routing { args } {
 
 sta::define_cmd_args "set_timing_driven" { [-critical_nets_percentage percent] \
                                            [-max_negative_slack slack] \
-                                           [-min_area min_area]
+                                           [-min_area min_area] \
+                                           [-min_fanout fanout]
 }
 
 proc set_timing_driven { args } {
   sta::parse_key_args "set_timing_driven" args \
     keys { -critical_nets_percentage \
-           -max_negative_slack -min_area
+           -max_negative_slack -min_area \
+           -min_fanout
          }
 
   set tech [ord::get_db_tech]
@@ -219,6 +221,14 @@ proc set_timing_driven { args } {
     grt::set_timing_critical_min_area [expr { int($min_area * $lef_units * $lef_units) }]
   } else {
     grt::set_timing_critical_min_area 0
+  }
+
+  if { [info exists keys(-min_fanout)] } {
+    set fanout $keys(-min_fanout)
+    sta::check_positive_integer "-min_fanout" $min_area
+    grt::set_timing_critical_min_fanout $fanout
+  } else {
+    grt::set_timing_critical_min_fanout 1
   }
 }
 

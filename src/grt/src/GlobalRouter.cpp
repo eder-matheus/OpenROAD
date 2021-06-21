@@ -387,6 +387,7 @@ bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
     for (Net& net : *_nets) {
       odb::Rect bbox = computeNetBBox(net);
       if (slack_per_net[net.getDbNet()] <= max_slack &&
+          net.getNumPins() >= timing_critical_min_fanout_ &&
           bbox.area() > timing_critical_min_area_) {
         net.setTimingCritical();
         critical_nets_count++;
@@ -769,8 +770,6 @@ void GlobalRouter::initializeNets(std::vector<Net*>& nets)
 
   _fastRoute->setNumberNets(validNets);
   _fastRoute->setMaxNetDegree(getMaxNetDegree());
-
-  findTimingCriticalNets(_criticalNetsPercentage);
 
   for (Net* net : nets) {
     int pin_count = net->getNumPins();
@@ -1445,6 +1444,11 @@ void GlobalRouter::setMaxNegativeSlack(float max_slack)
 void GlobalRouter::setTimingCriticalMinArea(int min_area)
 {
   timing_critical_min_area_ = min_area;
+}
+
+void GlobalRouter::setTimingCriticalMinFanout(int fanout)
+{
+  timing_critical_min_fanout_ = fanout;
 }
 
 void GlobalRouter::writeGuides(const char* fileName)
@@ -2584,6 +2588,10 @@ void GlobalRouter::initNetlist()
     }
 
     addNets(db_nets);
+  }
+
+  if (_criticalNetsPercentage > 0) {
+    findTimingCriticalNets(_criticalNetsPercentage);
   }
 }
 
