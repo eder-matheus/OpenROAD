@@ -362,7 +362,7 @@ bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
   }
 
   sta::Slack slack_min = _rsz->resizeNetSlack(worst_slack_nets[0]);
-  _logger->info(GRT, 228, "worst slack {:.3g}", slack_min);
+  _logger->info(GRT, 228, "Worst slack {:.3g}", slack_min);
 
   if (slack_min >= 0) {
     _logger->warn(GRT, 229, "Positive WNS. Timing-driven mode disabled.");
@@ -739,6 +739,8 @@ void GlobalRouter::initializeNets(std::vector<Net*>& nets)
 
   _fastRoute->setNumberNets(validNets);
   _fastRoute->setMaxNetDegree(getMaxNetDegree());
+
+  findTimingCriticalNets(_criticalNetsPercentage);
 
   for (Net* net : nets) {
     int pin_count = net->getNumPins();
