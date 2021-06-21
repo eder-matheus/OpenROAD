@@ -182,6 +182,7 @@ class GlobalRouter
   // timing driven public functions
   void setCriticalNetsPercentage(float percent);
   void setMaxNegativeSlack(float max_slack);
+  void setTimingCriticalMinArea(int min_area);
 
   // Highlight route in the gui.
   void highlightRoute(const odb::dbNet *net);
@@ -221,6 +222,7 @@ class GlobalRouter
   std::vector<Pin*> getAllPorts();
   int computeTrackConsumption(const Net* net, std::vector<int>& edgeCostsPerLayer);
   bool findTimingCriticalNets(float worst_nets_percentage);
+  odb::Rect computeNetBBox(Net& net);
 
   // aux functions
   void findPins(Net* net);
@@ -336,6 +338,7 @@ class GlobalRouter
   // timing driven variables
   float _criticalNetsPercentage;
   float _maxNegativeSlack;
+  int timing_critical_min_area_;
 
   // Variables for PADs obstructions handling
   std::map<odb::dbNet*, std::vector<GSegment>> _padPinsConnections;

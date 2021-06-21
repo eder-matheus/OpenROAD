@@ -385,7 +385,9 @@ bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
 
     int critical_nets_count = 0;
     for (Net& net : *_nets) {
-      if (slack_per_net[net.getDbNet()] <= max_slack) {
+      odb::Rect bbox = computeNetBBox(net);
+      if (slack_per_net[net.getDbNet()] <= max_slack &&
+          bbox.area() > timing_critical_min_area_) {
         net.setTimingCritical();
         critical_nets_count++;
       }
@@ -394,6 +396,34 @@ bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
   }
 
   return true;
+}
+
+odb::Rect GlobalRouter::computeNetBBox(Net& net)
+{
+  const std::vector<Pin>& pins = net.getPins();
+  odb::Point min(std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+  odb::Point max(std::numeric_limits<int>::min(), std::numeric_limits<int>::min());
+
+  for (const Pin& pin : pins) {
+    const odb::Point& pin_pos = pin.getPosition();
+    if (pin_pos.getX() < min.getX()) {
+      min.setX(pin_pos.getX());
+    }
+
+    if (pin_pos.getY() < min.getY()) {
+      min.setY(pin_pos.getY());
+    }
+
+    if (pin_pos.getX() > max.getX()) {
+      max.setX(pin_pos.getX());
+    }
+
+    if (pin_pos.getY() > max.getY()) {
+      max.setY(pin_pos.getY());
+    }
+  }
+
+  return odb::Rect(min, max);
 }
 
 void GlobalRouter::initCoreGrid(int maxRoutingLayer)
@@ -1410,6 +1440,11 @@ void GlobalRouter::setCriticalNetsPercentage(float percent)
 void GlobalRouter::setMaxNegativeSlack(float max_slack)
 {
   _maxNegativeSlack = max_slack;
+}
+
+void GlobalRouter::setTimingCriticalMinArea(int min_area)
+{
+  timing_critical_min_area_ = min_area;
 }
 
 void GlobalRouter::writeGuides(const char* fileName)
