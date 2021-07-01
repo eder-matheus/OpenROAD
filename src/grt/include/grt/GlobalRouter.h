@@ -340,8 +340,8 @@ class GlobalRouter
   int _maxLayerForClock = -2;
 
   // timing driven variables
-  float _criticalNetsPercentage;
-  float _maxNegativeSlack;
+  float critical_nets_percent_;
+  float max_negative_slack_;
   int timing_critical_min_area_;
   int timing_critical_min_fanout_;
 

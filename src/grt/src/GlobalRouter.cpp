@@ -364,38 +364,38 @@ bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
   }
 
   sta::Slack slack_min = _rsz->resizeNetSlack(worst_slack_nets[0]);
-  _logger->info(GRT, 228, "Worst slack {:.3g}", slack_min);
+  _logger->info(GRT, 231, "Worst slack {:.3g}", slack_min);
 
   if (slack_min >= 0) {
-    _logger->warn(GRT, 229, "Positive WNS. Timing-driven mode disabled.");
+    _logger->warn(GRT, 232, "Positive WNS. Timing-driven mode disabled.");
     return false;
   }
 
   for (Net& net : *_nets) {
     float net_slack = _rsz->resizeNetSlack(net.getDbNet());
-    if (net_slack < 0) {
-      slack_values.push_back(net_slack);
-      slack_per_net[net.getDbNet()] = net_slack;
-    }
+    slack_values.push_back(net_slack);
+    slack_per_net[net.getDbNet()] = net_slack;
   }
 
   if (!slack_values.empty()) {
     std::sort(slack_values.begin(), slack_values.end());
 
     int slack_idx = (slack_values.size() * worst_nets_percentage) - 1;
-    float max_slack = slack_values[slack_idx];
+    float max_slack = (max_negative_slack_ != 0) ? 
+                      max_negative_slack_ : slack_values[slack_idx];
+    max_slack = (max_slack < 0) ? max_slack : 0;
 
     int critical_nets_count = 0;
     for (Net& net : *_nets) {
       odb::Rect bbox = computeNetBBox(net);
-      if (slack_per_net[net.getDbNet()] <= max_slack &&
+      if (slack_per_net[net.getDbNet()] < max_slack &&
           net.getNumPins() >= timing_critical_min_fanout_ &&
           bbox.area() > timing_critical_min_area_) {
         net.setTimingCritical();
         critical_nets_count++;
       }
     }
-    _logger->info(GRT, 230, "Critical nets: {}", critical_nets_count);
+    _logger->info(GRT, 233, "Critical nets: {}", critical_nets_count);
   }
 
   return true;
@@ -1521,12 +1521,12 @@ void GlobalRouter::perturbCapacities()
 
 void GlobalRouter::setCriticalNetsPercentage(float percent)
 {
-  _criticalNetsPercentage = percent;
+  critical_nets_percent_ = percent;
 }
 
 void GlobalRouter::setMaxNegativeSlack(float max_slack)
 {
-  _maxNegativeSlack = max_slack;
+  max_negative_slack_ = max_slack;
 }
 
 void GlobalRouter::setTimingCriticalMinArea(int min_area)
@@ -2678,8 +2678,8 @@ void GlobalRouter::initNetlist()
     addNets(db_nets);
   }
 
-  if (_criticalNetsPercentage > 0) {
-    findTimingCriticalNets(_criticalNetsPercentage);
+  if (critical_nets_percent_ > 0) {
+    findTimingCriticalNets(critical_nets_percent_);
   }
 }
 
