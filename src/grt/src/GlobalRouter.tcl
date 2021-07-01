@@ -196,14 +196,14 @@ proc set_global_routing_random { args } {
   }
 }
 
-sta::define_cmd_args "set_timing_driven" { [-critical_nets_percentage percent] \
-                                           [-max_negative_slack slack] \
-                                           [-min_area min_area] \
-                                           [-min_fanout fanout]
+sta::define_cmd_args "repair_timing_critical_nets" { [-critical_nets_percentage percent] \
+                                                     [-max_negative_slack slack] \
+                                                     [-min_area min_area] \
+                                                     [-min_fanout fanout]
 }
 
-proc set_timing_driven { args } {
-  sta::parse_key_args "set_timing_driven" args \
+proc repair_timing_critical_nets { args } {
+  sta::parse_key_args "repair_timing_critical_nets" args \
     keys { -critical_nets_percentage \
            -max_negative_slack -min_area \
            -min_fanout
@@ -242,6 +242,8 @@ proc set_timing_driven { args } {
   } else {
     grt::set_timing_critical_min_fanout 1
   }
+
+  grt::repair_timing_critical_nets
 }
 
 sta::define_cmd_args "global_route" {[-guide_file out_file] \

@@ -225,6 +225,12 @@ repair_antennas(LibertyPort* diodePort, int iterations)
 }
 
 void
+repair_timing_critical_nets()
+{
+  getGlobalRouter()->repairTimingCriticalNets();
+}
+
+void
 clear()
 {
   getGlobalRouter()->clear();

@@ -106,6 +106,7 @@ enum class NetType
   Clock,
   Signal,
   Antenna,
+  TimingCritical,
   All
 };
 
@@ -186,6 +187,7 @@ class GlobalRouter
   void setTimingCriticalMinFanout(int fanout);
   void setMinLayerForTimingCritical(int min_layer) { min_layer_for_timing_critical_ = min_layer; }
   void setMaxLayerForTimingCritical(int max_layer) { max_layer_for_timing_critical_ = max_layer; }
+  void repairTimingCriticalNets();
 
   // functions for random grt
   void setSeed(int seed) { seed_ = seed; }
