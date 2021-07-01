@@ -37,7 +37,7 @@
 
 namespace grt {
 
-Net::Net(odb::dbNet* net) : _net(net)
+Net::Net(odb::dbNet* net) : _net(net), _timingCritical(false)
 {
 }
 
