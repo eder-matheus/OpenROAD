@@ -382,7 +382,7 @@ bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
   _rsz->resizeSlackPreamble();
   _rsz->findResizeSlacks();
 
-  sta::NetSeq &worst_slack_nets = _rsz->resizeWorstSlackNets();
+  std::vector<odb::dbNet*> worst_slack_nets = _rsz->resizeWorstSlackDbNets();
 
   if( worst_slack_nets.empty()) {
     _logger->warn(GRT, 227, "No net slacks found. Timing-driven mode disabled.");
