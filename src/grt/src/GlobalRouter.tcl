@@ -136,11 +136,12 @@ proc set_global_routing_region_adjustment { args } {
 
 sta::define_cmd_args "set_routing_layers" { [-signal layers] \
                                             [-clock layers] \
+                                            [-timing_critical layers]
 }
 
 proc set_routing_layers { args } {
   sta::parse_key_args "set_routing_layers" args \
-    keys {-signal -clock}
+    keys {-signal -clock -timing_critical}
 
   if { [info exists keys(-signal)] } {
     grt::define_layer_range $keys(-signal)
@@ -148,6 +149,10 @@ proc set_routing_layers { args } {
 
   if { [info exists keys(-clock)] } {
     grt::define_clock_layer_range $keys(-clock)
+  }
+
+  if { [info exists keys(-timing_critical)] } {
+    grt::define_timing_critical_layer_range $keys(-timing_critical)
   }
 }
 
@@ -471,6 +476,19 @@ proc define_clock_layer_range { layers } {
     grt::set_clock_layer_range $min_clock_layer $max_clock_layer
   } else {
     utl::error GRT 56 "-clock_layers: Min routing layer is greater than max routing layer."
+  }
+}
+
+proc define_timing_critical_layer_range { layers } {
+  set layer_range [grt::parse_layer_range "-timing_critical_layers" $layers]
+  lassign $layer_range min_timing_critical_layer max_timing_critical_layer
+  grt::check_routing_layer $min_timing_critical_layer
+  grt::check_routing_layer $max_timing_critical_layer
+
+  if { $min_timing_critical_layer < $max_timing_critical_layer } {
+    grt::set_timing_critical_layer_range $min_timing_critical_layer $max_timing_critical_layer
+  } else {
+    utl::error GRT 147 "-timing_critical_layers: Min routing layer is greater than max routing layer."
   }
 }
 

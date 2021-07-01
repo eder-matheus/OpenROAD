@@ -184,6 +184,8 @@ class GlobalRouter
   void setMaxNegativeSlack(float max_slack);
   void setTimingCriticalMinArea(int min_area);
   void setTimingCriticalMinFanout(int fanout);
+  void setMinLayerForTimingCritical(int min_layer) { min_layer_for_timing_critical_ = min_layer; }
+  void setMaxLayerForTimingCritical(int max_layer) { max_layer_for_timing_critical_ = max_layer; }
 
   // functions for random grt
   void setSeed(int seed) { seed_ = seed; }
@@ -344,6 +346,8 @@ class GlobalRouter
   float max_negative_slack_;
   int timing_critical_min_area_;
   int timing_critical_min_fanout_;
+  int min_layer_for_timing_critical_ = -1;
+  int max_layer_for_timing_critical_ = -2;
 
   // variables for random grt
   int seed_;
