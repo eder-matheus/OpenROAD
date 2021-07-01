@@ -237,7 +237,7 @@ proc repair_timing_critical_nets { args } {
 
   if { [info exists keys(-min_fanout)] } {
     set fanout $keys(-min_fanout)
-    sta::check_positive_integer "-min_fanout" $min_area
+    sta::check_positive_integer "-min_fanout" $fanout
     grt::set_timing_critical_min_fanout $fanout
   } else {
     grt::set_timing_critical_min_fanout 1
