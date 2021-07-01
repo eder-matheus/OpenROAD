@@ -310,6 +310,32 @@ void GlobalRouter::repairAntennas(sta::LibertyPort* diodePort, int iterations)
   }
 }
 
+void GlobalRouter::repairTimingCriticalNets()
+{
+  _logger->info(GRT, 7, "Repairing timing critical nets...");
+  Capacities capacities = saveCapacities(_minRoutingLayer, _maxRoutingLayer);
+  clearObjects();
+  std::vector<Net*> timing_critical_nets
+      = startFastRoute(min_layer_for_timing_critical_,
+                       max_layer_for_timing_critical_,
+                       NetType::TimingCritical);
+  restoreCapacities(capacities,
+                    min_layer_for_timing_critical_,
+                    max_layer_for_timing_critical_);
+
+  if (!timing_critical_nets.empty()) {
+    reportResources();
+    // Store results in a temporary map, allowing to keep previous
+    // routing result from clock nets
+    NetRouteMap result
+        = findRouting(timing_critical_nets,
+                      min_layer_for_timing_critical_,
+                      max_layer_for_timing_critical_);
+    mergeResults(result);
+    _logger->info(GRT, 13, "Routed timing critical nets: {}", result.size());
+  }
+}
+
 void GlobalRouter::addDirtyNet(odb::dbNet* net)
 {
   _dirtyNets.insert(net);
@@ -2677,10 +2703,6 @@ void GlobalRouter::initNetlist()
 
     addNets(db_nets);
   }
-
-  if (critical_nets_percent_ > 0) {
-    findTimingCriticalNets(critical_nets_percent_);
-  }
 }
 
 void GlobalRouter::addNets(std::set<odb::dbNet*, cmpById>& db_nets)
@@ -2721,6 +2743,15 @@ void GlobalRouter::getNetsByType(NetType type, std::vector<Net*>& nets)
   } else if (type == NetType::Antenna) {
     for (odb::dbNet* db_net : _dirtyNets) {
       nets.push_back(_db_net_map[db_net]);
+    }
+  } else if (type == NetType::TimingCritical) {
+    if (critical_nets_percent_ > 0) {
+      findTimingCriticalNets(critical_nets_percent_);
+      for (Net net : *_nets) {
+        if (net.isTimingCritical()) {
+          nets.push_back(_db_net_map[net.getDbNet()]);
+        }
+      }
     }
   } else {
     for (Net net : *_nets) {
