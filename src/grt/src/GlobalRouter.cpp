@@ -409,12 +409,12 @@ bool GlobalRouter::findTimingCriticalNets(float worst_nets_percentage)
     int slack_idx = (slack_values.size() * worst_nets_percentage) - 1;
     float max_slack = (max_negative_slack_ != 0) ? 
                       max_negative_slack_ : slack_values[slack_idx];
-    max_slack = (max_slack < 0) ? max_slack : 0;
 
     int critical_nets_count = 0;
     for (Net& net : *_nets) {
       odb::Rect bbox = computeNetBBox(net);
-      if (slack_per_net[net.getDbNet()] < max_slack &&
+      if (slack_per_net[net.getDbNet()] < 0 &&
+          slack_per_net[net.getDbNet()] <= max_slack &&
           net.getNumPins() >= timing_critical_min_fanout_ &&
           bbox.area() > timing_critical_min_area_) {
         net.setTimingCritical();
