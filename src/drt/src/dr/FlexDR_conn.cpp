@@ -813,7 +813,7 @@ void FlexDRConnectivityChecker::handleOverlaps_perform(
       }
     }
   }
-  sort(segSpans.begin(), segSpans.end());
+  stable_sort(segSpans.begin(), segSpans.end());
 
   splitPathSegs(netRouteObjs, segSpans);
   // get victim segments and merged segments
@@ -878,7 +878,7 @@ void FlexDRConnectivityChecker::splitPathSegs_commit(
     vector<pair<Span, int>>& segSpans,
     NetRouteObjs& netRouteObjs)
 {
-  sort(splitPoints.begin(), splitPoints.end());
+  stable_sort(splitPoints.begin(), splitPoints.end());
   if (splitPoints[splitPoints.size() - 1]
       == highestPs->high())  // we dont need this split point, only those inside
                              // the overlapping interval
@@ -968,7 +968,7 @@ void FlexDRConnectivityChecker::splitPathSegs_commit(
 #pragma omp critical
       getRegionQuery()->addDRObj(ptr);
     }
-    sort(segSpans.begin() + first, segSpans.begin() + i);
+    stable_sort(segSpans.begin() + first, segSpans.begin() + i);
   }
   splitPoints.clear();
 }

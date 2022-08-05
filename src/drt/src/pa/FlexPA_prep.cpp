@@ -1573,7 +1573,7 @@ void FlexPA::prepPattern()
   };
 
   getInsts(insts);
-  std::sort(insts.begin(), insts.end(), instLocComp);
+  std::stable_sort(insts.begin(), insts.end(), instLocComp);
 
   // gen rows of insts
   int prevYCoord = INT_MIN;
@@ -2070,7 +2070,7 @@ int FlexPA::prepPattern_inst(frInst* inst,
     if (nAps == 0 && instTerm->getTerm()->getPins().size())
       logger_->error(DRT, 86, "Pin does not have an access point.");
   }
-  std::sort(pins.begin(),
+  std::stable_sort(pins.begin(),
             pins.end(),
             [](const std::pair<frCoord, std::pair<frMPin*, frInstTerm*>>& lhs,
                const std::pair<frCoord, std::pair<frMPin*, frInstTerm*>>& rhs) {

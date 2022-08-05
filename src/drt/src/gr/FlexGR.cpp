@@ -476,8 +476,8 @@ void FlexGR::reportCong2D(FlexGRCMap* cmap2D)
     }
   }
 
-  sort(conH.begin(), conH.end());
-  sort(conV.begin(), conV.end());
+  stable_sort(conH.begin(), conH.end());
+  stable_sort(conV.begin(), conV.end());
 
   cout << "    H        " << setw(8) << numOverConGCellH << "   " << setw(6)
        << fixed << numOverConGCellH * 100.0 / numGCell << "%\n";
@@ -560,8 +560,8 @@ void FlexGR::reportCong2D()
     }
   }
 
-  sort(conH.begin(), conH.end());
-  sort(conV.begin(), conV.end());
+  stable_sort(conH.begin(), conH.end());
+  stable_sort(conV.begin(), conV.end());
 
   cout << "    H        " << setw(8) << numOverConGCellH << "   " << setw(6)
        << fixed << numOverConGCellH * 100.0 / numGCell << "%\n";
@@ -729,7 +729,7 @@ void FlexGR::reportCong3D(FlexGRCMap* cmap)
       }
     }
 
-    sort(con.begin(), con.end());
+    stable_sort(con.begin(), con.end());
 
     cout << "numOverConGCell: " << numOverConGCell
          << ", %OverConGCell: " << setw(6) << fixed
@@ -804,7 +804,7 @@ void FlexGR::reportCong3D()
       }
     }
 
-    sort(con.begin(), con.end());
+    stable_sort(con.begin(), con.end());
 
     cout << "numOverConGCell: " << numOverConGCell
          << ", %OverConGCell: " << setw(6) << fixed
@@ -1845,7 +1845,7 @@ void FlexGR::layerAssign()
       }
     }
   };
-  sort(sortedNets.begin(), sortedNets.end(), sort_net());
+  stable_sort(sortedNets.begin(), sortedNets.end(), sort_net());
 
   for (auto& [ratio, net] : sortedNets) {
     layerAssign_net(net);

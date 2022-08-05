@@ -1491,7 +1491,7 @@ bool FlexDRWorker::mazeIterInit_sortRerouteNets(int mazeIter,
   };
   // sort
   if (mazeIter == 0) {
-    sort(rerouteNets.begin(), rerouteNets.end(), rerouteNetsComp);
+    stable_sort(rerouteNets.begin(), rerouteNets.end(), rerouteNetsComp);
     // to be removed
     if (OR_SEED != -1 && rerouteNets.size() >= 2) {
       uniform_int_distribution<int> distribution(0, rerouteNets.size() - 1);
@@ -1521,7 +1521,7 @@ bool FlexDRWorker::mazeIterInit_sortRerouteQueue(
         };
   // sort
   if (mazeIter == 0) {
-    sort(rerouteNets.begin(), rerouteNets.end(), rerouteNetsComp);
+    stable_sort(rerouteNets.begin(), rerouteNets.end(), rerouteNetsComp);
   }
   return true;
 }
