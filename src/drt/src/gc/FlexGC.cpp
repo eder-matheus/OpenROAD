@@ -149,6 +149,10 @@ void FlexGCWorker::setDrcBox(const Rect& in)
 
 const std::vector<std::unique_ptr<frMarker>>& FlexGCWorker::getMarkers() const
 {
+  auto cmp = [](const std::unique_ptr<frMarker>& a, const std::unique_ptr<frMarker>& b) {
+    return a->getBBox() < b->getBBox();
+  };
+  std::stable_sort(impl_->markers_.begin(), impl_->markers_.end(), cmp);
   return impl_->markers_;
 }
 
