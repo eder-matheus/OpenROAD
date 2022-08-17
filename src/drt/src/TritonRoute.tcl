@@ -311,6 +311,13 @@ proc pin_access { args } {
   drt::pin_access_cmd $db_process_node $bottom_routing_layer $top_routing_layer $verbose $min_access_points
 }
 
+proc report_pin_access { args } {
+  if { [llength $args] == 1 } {
+    lassign $args file_name
+    drt::report_pin_access_cmd $file_name
+  }
+}
+
 sta::define_cmd_args "detailed_route_run_worker" {
     [-dump_dir dir]
     [-drc_rpt drc]

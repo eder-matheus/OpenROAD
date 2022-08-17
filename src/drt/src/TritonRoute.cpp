@@ -784,6 +784,38 @@ void TritonRoute::pinAccess(std::vector<odb::dbInst*> target_insts)
   writer.updateDb(db_, true);
 }
 
+void TritonRoute::reportPinAccess(const char* file_name)
+{
+  remove(file_name);
+  std::ofstream out(file_name);
+  auto block = db_->getChip()->getBlock();
+  for (auto net : block->getNets()) {
+    out << "Net " << net->getName() << "\n";
+    for (auto iterm : net->getITerms()) {
+      out << "\tPin " << iterm->getMTerm()->getName() << "\n";
+      for (auto ap : iterm->getPrefAccessPoints()) {
+        odb::dbTransform xform;
+        int x, y;
+        iterm->getInst()->getLocation(x, y);
+        xform.setOffset({x, y});
+        xform.setOrient(odb::dbOrientType(odb::dbOrientType::R0));
+        auto ap_pos = ap->getPoint();
+        xform.apply(ap_pos);
+        out << "\t\t(" << ap_pos.x() << ", " << ap_pos.y() << ", " << ap->getLayer()->getRoutingLevel() << ")\n";
+      }
+    }
+
+    for (auto bterm : net->getBTerms()) {
+      out << "\tPin " << bterm->getName() << "\n";
+      for (auto bpin : bterm->getBPins()) {
+        for (auto ap : bpin->getAccessPoints()) {
+          out << "\t\t(" << ap->getPoint().x() << ", " << ap->getPoint().y() << ", " << ap->getLayer()->getRoutingLevel() << ")\n";
+        }
+      }
+    }
+  }
+}
+
 void TritonRoute::checkDRC(const char* filename, int x1, int y1, int x2, int y2)
 {
   initDesign();

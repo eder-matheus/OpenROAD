@@ -110,6 +110,7 @@ class TritonRoute
   void endFR();
   void pinAccess(std::vector<odb::dbInst*> target_insts
                  = std::vector<odb::dbInst*>());
+  void reportPinAccess(const char* file_name);
   void stepDR(int size,
               int offset,
               int mazeEndIter,

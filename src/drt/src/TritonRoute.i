@@ -135,6 +135,12 @@ void pin_access_cmd(const char* dbProcessNode,
   router->pinAccess();
 }
 
+void report_pin_access_cmd(const char* file_name)
+{
+  auto* router = ord::OpenRoad::openRoad()->getTritonRoute();
+  router->reportPinAccess(file_name);
+}
+
 void detailed_route_cmd(const char* param_file)
 {
   auto* router = ord::OpenRoad::openRoad()->getTritonRoute();
