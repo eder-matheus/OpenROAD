@@ -180,8 +180,8 @@ detailed_placement
 # Capture utilization before fillers make it 100%
 utl::metric "DPL::utilization" [format %.1f [expr [rsz::utilization] * 100]]
 utl::metric "DPL::design_area" [sta::format_area [rsz::design_area] 0]
-filler_placement $filler_cells
-check_placement -verbose
+# filler_placement $filler_cells
+# check_placement -verbose
 
 # checkpoint
 set grt_db [make_result_file ${design}_${platform}_grt.db]
@@ -193,9 +193,11 @@ write_db $grt_db
 pin_access -bottom_routing_layer $min_routing_layer \
            -top_routing_layer $max_routing_layer
 
+report_pin_access [make_result_file ${design}_${platform}.pa_rpt]
+
 set route_guide [make_result_file ${design}_${platform}.route_guide]
 global_route -guide_file $route_guide \
-  -congestion_iterations 100
+  -congestion_iterations 100 -verbose
 
 set verilog_file [make_result_file ${design}_${platform}.v]
 write_verilog -remove_cells $filler_cells $verilog_file
@@ -207,17 +209,23 @@ check_antennas
 utl::metric "GRT::ANT::errors" [ant::antenna_violation_count]
 #repair_antennas
 
+filler_placement $filler_cells
+check_placement -verbose
+
 ################################################################
 # Detailed routing
 
-set_thread_count [exec getconf _NPROCESSORS_ONLN]
+write_def [make_result_file ${design}_${platform}_pre_route.def]
+
+set_thread_count 1
 detailed_route -output_drc [make_result_file "${design}_${platform}_route_drc.rpt"] \
                -output_maze [make_result_file "${design}_${platform}_maze.log"] \
                -no_pin_access \
                -save_guide_updates \
                -bottom_routing_layer $min_routing_layer \
                -top_routing_layer $max_routing_layer \
-               -verbose 0
+               -droute_end_iter 0 \
+               -verbose 1
 
 write_guides [make_result_file "${design}_${platform}_output_guide.mod"]
 set drv_count [detailed_route_num_drvs]

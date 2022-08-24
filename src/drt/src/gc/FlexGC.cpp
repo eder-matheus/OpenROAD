@@ -95,6 +95,7 @@ void FlexGCWorker::Impl::addMarker(std::unique_ptr<frMarker> in)
   }
   mapMarkers_[std::make_tuple(bbox, layerNum, con, srcs[0], srcs[1])]
       = in.get();
+  // std::cout << "Adding marker: " << *in << "\n";
   markers_.push_back(std::move(in));
 }
 

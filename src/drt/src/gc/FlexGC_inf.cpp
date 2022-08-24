@@ -124,6 +124,7 @@ void FlexGCWorker::Impl::checkOrthRectsMetSpcTblInf(
                                               gtl::xh(rect2),
                                               gtl::yh(rect2)),
                                         rects[j]->isFixed()));
+        // std::cout << "Before marker 16\n";
         addMarker(std::move(marker));
       } else
         break;  // spacing is larger than required, no need to check other

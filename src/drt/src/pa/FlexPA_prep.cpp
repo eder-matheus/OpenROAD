@@ -2295,6 +2295,7 @@ bool FlexPA::genPatterns_gc(std::set<frBlockObject*> targetObjs,
   }
   if (owners) {
     for (auto& marker : gcWorker.getMarkers()) {
+      // std::cout << "Marker in PA: " << *marker << "\n";
       for (auto& src : marker->getSrcs()) {
         owners->insert(src);
       }

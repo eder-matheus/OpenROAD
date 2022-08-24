@@ -568,6 +568,7 @@ void FlexGCWorker::Impl::checkMetalSpacing_prl(
                                         gtl::xh(*rect2),
                                         gtl::yh(*rect2)),
                                   rect2->isFixed()));
+  // std::cout << "Before marker 0\n";
   addMarker(std::move(marker));
 }
 
@@ -788,6 +789,7 @@ void FlexGCWorker::Impl::checkMetalSpacing_short(
                                         gtl::xh(*rect2),
                                         gtl::yh(*rect2)),
                                   rect2->isFixed()));
+  // std::cout << "Before marker 1\n";
   addMarker(std::move(marker));
 }
 
@@ -1086,6 +1088,7 @@ void FlexGCWorker::Impl::checkMetalCornerSpacing_main(
                                             gtl::xh(*rect),
                                             gtl::yh(*rect)),
                                       rect->isFixed()));
+      // std::cout << "Before marker 2\n";
       addMarker(std::move(marker));
       return;
     } else {
@@ -1199,6 +1202,7 @@ void FlexGCWorker::Impl::checkMetalShape_minWidth(
   marker->addSrc(net->getOwner());
   marker->addVictim(net->getOwner(), make_tuple(layerNum, box, false));
   marker->addAggressor(net->getOwner(), make_tuple(layerNum, box, false));
+  // std::cout << "Before marker 4\n";
   addMarker(std::move(marker));
 }
 
@@ -1256,6 +1260,7 @@ void FlexGCWorker::Impl::checkMetalShape_minStep_helper(
   marker->addSrc(net->getOwner());
   marker->addVictim(net->getOwner(), make_tuple(layerNum, markerBox, false));
   marker->addAggressor(net->getOwner(), make_tuple(layerNum, markerBox, false));
+  // std::cout << "Before marker 5\n";
   addMarker(std::move(marker));
 }
 bool isConvex(gcSegment* s) {
@@ -1425,6 +1430,7 @@ void FlexGCWorker::Impl::checkMetalShape_lef58MinStep_noBetweenEol(
     marker->addSrc(net->getOwner());
     marker->addVictim(net->getOwner(), make_tuple(layerNum, box, false));
     marker->addAggressor(net->getOwner(), make_tuple(layerNum, box, false));
+    // std::cout << "Before marker 6\n";
     addMarker(std::move(marker));
   }
 }
@@ -1607,6 +1613,7 @@ void FlexGCWorker::Impl::checkMetalShape_rectOnly(gcPin* pin)
         marker->addSrc(net->getOwner());
         marker->addVictim(net->getOwner(), make_tuple(layerNum, box, false));
         marker->addAggressor(net->getOwner(), make_tuple(layerNum, box, false));
+        // std::cout << "Before marker 7\n";
         addMarker(std::move(marker));
       }
     }
@@ -1645,6 +1652,7 @@ void FlexGCWorker::Impl::checkMetalShape_offGrid(gcPin* pin)
       marker->addSrc(net->getOwner());
       marker->addVictim(net->getOwner(), make_tuple(layerNum, box, false));
       marker->addAggressor(net->getOwner(), make_tuple(layerNum, box, false));
+      // std::cout << "Before marker 8\n";
       addMarker(std::move(marker));
     }
   }
@@ -1685,6 +1693,7 @@ void FlexGCWorker::Impl::checkMetalShape_minEnclosedArea(gcPin* pin)
           marker->addVictim(net->getOwner(), make_tuple(layerNum, box, false));
           marker->addAggressor(net->getOwner(),
                                make_tuple(layerNum, box, false));
+          // std::cout << "Before marker 9\n"                               ;
           addMarker(std::move(marker));
         }
       }
@@ -1868,7 +1877,7 @@ void FlexGCWorker::Impl::checkCutSpacing_short(
                                         gtl::xh(*rect2),
                                         gtl::yh(*rect2)),
                                   rect2->isFixed()));
-
+  // std::cout << "Before marker 10\n";
   addMarker(std::move(marker));
 }
 
@@ -1995,6 +2004,7 @@ void FlexGCWorker::Impl::checkCutSpacing_spc(
                                         gtl::xh(*rect2),
                                         gtl::yh(*rect2)),
                                   rect2->isFixed()));
+  // std::cout << "Before marker 11\n";
   addMarker(std::move(marker));
 }
 
@@ -2066,6 +2076,7 @@ void FlexGCWorker::Impl::checkCutSpacing_spc_diff_layer(
                                         gtl::xh(*rect2),
                                         gtl::yh(*rect2)),
                                   rect2->isFixed()));
+  // std::cout << "Before marker 12\n";
   addMarker(std::move(marker));
 }
 
@@ -2378,6 +2389,7 @@ void FlexGCWorker::Impl::checkLef58CutSpacing_spc_adjCut(
                                         gtl::xh(*rect2),
                                         gtl::yh(*rect2)),
                                   rect2->isFixed()));
+  // std::cout << "Before marker 13\n";
   addMarker(std::move(marker));
 }
 
@@ -2538,6 +2550,7 @@ void FlexGCWorker::Impl::checkLef58CutSpacing_spc_layer(
                 secondLayerNum,
                 Rect(corner->x(), corner->y(), corner->x(), corner->y()),
                 corner->isFixed()));
+        // std::cout << "Before marker 14\n";
         addMarker(std::move(marker));
       }
     } else if (con->hasExtension()) {
@@ -2658,6 +2671,7 @@ void FlexGCWorker::Impl::checkLef58CutSpacing_spc_layer(
                 secondLayerNum,
                 Rect(corner->x(), corner->y(), corner->x(), corner->y()),
                 corner->isFixed()));
+        // std::cout << "Before marker 15\n";
         addMarker(std::move(marker));
       }
     } else if (con->hasAboveWidth()) {

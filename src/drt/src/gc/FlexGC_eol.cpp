@@ -549,6 +549,7 @@ void FlexGCWorker::Impl::checkMetalEndOfLine_eol_hasEol_helper(
       net2->getOwner(),
       make_tuple(
           edge2->getLayerNum(), Rect(llx, lly, urx, ury), edge2->isFixed()));
+  // std::cout << "Before marker 17\n";
   addMarker(std::move(marker));
 }
 
@@ -895,6 +896,7 @@ void FlexGCWorker::Impl::checkMetalEOLkeepout_helper(
       net2->getOwner(),
       make_tuple(
           rect->getLayerNum(), Rect(llx2, lly2, urx2, ury2), rect->isFixed()));
+  // std::cout << "Before marker 18\n";
   addMarker(std::move(marker));
 }
 void FlexGCWorker::Impl::checkMetalEOLkeepout_main(
@@ -1092,6 +1094,7 @@ void FlexGCWorker::Impl::checkMetalEndOfLine_ext_helper(
       edge2->getNet()->getOwner(),
       make_tuple(
           edge2->getLayerNum(), Rect(llx, lly, urx, ury), edge2->isFixed()));
+  // std::cout << "Before marker 19\n";
   addMarker(std::move(marker));
 }
 

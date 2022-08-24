@@ -1736,6 +1736,10 @@ void FlexDRWorker::route_queue_main(queue<RouteQueueEntry>& rerouteQueue)
     bool didRoute = false;
     bool didCheck = false;
 
+    if (obj->typeId() == drcNet) {
+      auto n = static_cast<drNet*>(obj);
+      // std::cout << "Routing net " << n->getFrNet()->getName() << ", num reroute: " << numReroute << ", doRoute: " << doRoute << "\n";
+    }
     if (obj->typeId() == drcNet && doRoute) {
       auto net = static_cast<drNet*>(obj);
       if (numReroute != net->getNumReroutes()) {
@@ -2298,6 +2302,7 @@ void FlexDRWorker::routeNet_postAstarWritePath(
     map<FlexMazeIdx, frBox3D*>& mazeIdx2TaperBox,
     const set<FlexMazeIdx>& apMazeIdx)
 {
+  // std::cout << "\trouteNet_postAstarWritePath for net " << net->getFrNet()->getName() << "\n";
   if (points.empty()) {
     return;
   }

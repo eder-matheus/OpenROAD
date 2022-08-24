@@ -348,6 +348,7 @@ void FlexGCWorker::Impl::checkLef58CutSpacingTbl_main(
     marker->addAggressor(
         net2->getOwner(),
         make_tuple(layerNum2, Rect(llx, lly, urx, ury), viaRect2->isFixed()));
+    // std::cout << "Before marker 20\n";
     addMarker(std::move(marker));
   }
 }

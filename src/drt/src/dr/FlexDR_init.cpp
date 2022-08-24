@@ -2565,12 +2565,18 @@ void FlexDRWorker::route_queue_init_queue(queue<RouteQueueEntry>& rerouteQueue)
     // nets are ripped up during initNets()
     vector<drNet*> ripupNets;
     for (auto& net : nets_) {
+      if (net->typeId() == drcNet) {
+        // std::cout << "Net (ripup)" << net->getFrNet()->getName() << "\n";
+      }
       ripupNets.push_back(net.get());
     }
 
     // sort nets
     mazeIterInit_sortRerouteNets(0, ripupNets);
     for (auto& net : ripupNets) {
+      if (net->typeId() == drcNet) {
+        // std::cout << "Net (ripup2)" << net->getFrNet()->getName() << "\n";
+      }
       routes.push_back({net, 0, true});
       // reserve via because all nets are ripupped
       initMazeCost_via_helper(net, true);
@@ -2589,9 +2595,17 @@ void FlexDRWorker::route_queue_update_queue(
     queue<RouteQueueEntry>& rerouteQueue)
 {
   for (auto& route : routes) {
+    if (route.block->typeId() == drcNet) {
+      auto n = static_cast<drNet*>(route.block);
+      // std::cout << "Net (route)" << n->getFrNet()->getName() << "\n";
+    }
     rerouteQueue.push(route);
   }
   for (auto& check : checks) {
+    if (check.block->typeId() == drcNet) {
+      auto n = static_cast<drNet*>(check.block);
+      // std::cout << "Net (check)" << n->getFrNet()->getName() << "\n";
+    }
     rerouteQueue.push(check);
   }
 }
@@ -2657,7 +2671,10 @@ void FlexDRWorker::route_queue_update_from_marker(
   // push movable aggressors for reroute and other srcs for drc checking
   bool hasRerouteNet = false;
   if (!movableAggressorNets.empty()) {
+    int i = 0;
     for (auto& fNet : movableAggressorNets) {
+      // std::cout << "movableAggressorNet adding: " << fNet->getName() << " in cntr i:  " << i << "\n";
+      i++;
       if (getDRNets(fNet)) {
         // int subNetIdx = -1;
         for (auto dNet : *(getDRNets(fNet))) {
@@ -2668,6 +2685,7 @@ void FlexDRWorker::route_queue_update_from_marker(
           // rerouteQueue.push_back(make_pair(dNet, make_pair(true,
           // dNet->getNumReroutes())));
           if (uniqueAggressors.find(fNet) == uniqueAggressors.end()) {
+            // std::cout << "Aggressor adding: " << fNet->getName() << "\n";
             uniqueAggressors.insert(fNet);
             uniqueAggressorOwners.push_back(fNet);
           }
@@ -2753,6 +2771,7 @@ void FlexDRWorker::route_queue_update_from_marker(
   for (auto& aggressorOwner : uniqueAggressorOwners) {
     if (aggressorOwner && aggressorOwner->typeId() == frcNet) {
       auto fNet = static_cast<frNet*>(aggressorOwner);
+      // std::cout << "Before adding: " << fNet->getName() << "\n";
       if (!fNet->getType().isSupply()) {
         if (getDRNets(fNet)) {
           for (auto dNet : *(getDRNets(fNet))) {
@@ -2767,6 +2786,7 @@ void FlexDRWorker::route_queue_update_from_marker(
                 allowAvoidRipup = true;
               dNet->setNRipupAvoids(0);
             }
+            // std::cout << "Net at uniqueAggressorOwners: " << dNet->getFrNet()->getName() << "\n";
             routes.push_back({dNet, dNet->getNumReroutes(), true});
           }
         }
@@ -2779,6 +2799,7 @@ void FlexDRWorker::route_queue_update_from_marker(
       checks.push_back({dNet, -1, false});
     } else {
       dNet->setNRipupAvoids(0);
+      // std::cout << "Net at setNRipupAvoids: " << dNet->getFrNet()->getName() << "\n";
       routes.push_back({dNet, dNet->getNumReroutes(), true});
     }
   }
@@ -3336,6 +3357,7 @@ void FlexDRWorker::initMarkers(const frDesign* design)
     // drc at start
     if (mptr->getConstraint()->typeId()
         != frConstraintTypeEnum::frcRecheckConstraint) {
+      // std::cout << "Marker: " << *mptr << "\n";
       markers_.push_back(*mptr);
     } else {
       needRecheck_ = true;
