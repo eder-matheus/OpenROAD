@@ -357,7 +357,7 @@ void SimulatedAnnealing::swapGroupWithPin(const int group_idx,
 
   freeSlotsFromGroup(group_idx);
   moveGroupToSlot(group_idx, pin_slot);
-  movePinToSlot(pin_slot, group_slot);
+  movePinToSlot(pin_idx, group_slot);
 }
 
 void SimulatedAnnealing::moveGroupToSlot(const int group_idx, int slot_idx)
