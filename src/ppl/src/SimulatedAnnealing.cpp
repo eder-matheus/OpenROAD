@@ -99,12 +99,20 @@ void SimulatedAnnealing::run(float init_temperature,
         if (!prev_slots_.empty() && !new_slots_.empty()) {
           for (int i = 0; i < prev_slots_.size(); i++) {
             int prev_slot = prev_slots_[i];
-            int new_slot = new_slots_[i];
             slots_[prev_slot].used = false;
             slots_[prev_slot].pin_idx = -1;
+          }
+          for (int i = 0; i < new_slots_.size(); i++) {
+            int new_slot = new_slots_[i];
             slots_[new_slot].used = true;
             slots_[new_slot].pin_idx = pins_[i];
           }
+        } else if (pins_.size() == 2) {
+          // update slots after lone pins swapping
+          int prev_slot1 = prev_slots_[0];
+          int prev_slot2 = prev_slots_[1];
+          slots_[prev_slot1].pin_idx = pins_[1];
+          slots_[prev_slot2].pin_idx = pins_[0];
         }
       } else {
         restorePreviousAssignment();
@@ -295,6 +303,7 @@ int SimulatedAnnealing::swapPins()
 
   std::swap(pin_assignment_[pin1], pin_assignment_[pin2]);
 
+
   return prev_cost;
 }
 
@@ -404,6 +413,7 @@ void SimulatedAnnealing::moveGroupToSlot(const int group_idx, int slot_idx)
   for (int pin_idx : group.pin_indices) {
     pin_assignment_[pin_idx] = slot_idx;
     slots_[slot_idx].used = true;
+    slots_[slot_idx].pin_idx = pin_idx;
     new_slots_.push_back(slot_idx);
     slot_idx++;
   }
@@ -414,7 +424,6 @@ void SimulatedAnnealing::moveGroupToSlot(const int group_idx, int slot_idx)
 void SimulatedAnnealing::movePinToSlot(const int pin_idx, const int slot_idx)
 {
   pin_assignment_[pin_idx] = slot_idx;
-  slots_[slot_idx].used = true;
   new_slots_.push_back(slot_idx);
 }
 
