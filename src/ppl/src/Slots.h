@@ -92,6 +92,7 @@ struct Slot
   odb::Point pos;
   int layer;
   Edge edge;
+  int pin_idx;
 
   bool isAvailable() const { return (!blocked && !used); }
 };
