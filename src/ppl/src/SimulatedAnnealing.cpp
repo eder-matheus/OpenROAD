@@ -431,18 +431,23 @@ void SimulatedAnnealing::movePinsToFreeSlots(
     const std::vector<int>& pin_indices)
 {
   for (int pin : pin_indices) {
-    boost::random::uniform_int_distribution<int> distribution(0,
-                                                              num_slots_ - 1);
-    bool free_slot = false;
-    int new_slot;
-    while (!free_slot) {
-      new_slot = distribution(generator_);
-      free_slot = slots_[new_slot].isAvailable();
+    const IOPin& io_pin = netlist_->getIoPin(pin);
+    if (io_pin.isInGroup()) {
+      moveGroupToFreeSlots(io_pin.getGroupIdx());
+    } else {
+      boost::random::uniform_int_distribution<int> distribution(0,
+                                                                num_slots_ - 1);
+      bool free_slot = false;
+      int new_slot;
+      while (!free_slot) {
+        new_slot = distribution(generator_);
+        free_slot = slots_[new_slot].isAvailable();
+      }
+      pins_.push_back(pin);
+      prev_slots_.push_back(pin_assignment_[pin]);
+      new_slots_.push_back(new_slot);
+      pin_assignment_[pin] = new_slot;
     }
-    pins_.push_back(pin);
-    prev_slots_.push_back(pin_assignment_[pin]);
-    new_slots_.push_back(new_slot);
-    pin_assignment_[pin] = new_slot;
   }
 }
 
