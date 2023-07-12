@@ -75,14 +75,21 @@ class SimulatedAnnealing
   int randomAssignmentForGroups(std::set<int>& placed_pins,
                                 const std::vector<int>& slot_indices);
   int64 getAssignmentCost();
-  int getDeltaCost(int prev_cost, const std::vector<int>& pins);
+  int getDeltaCost(int prev_cost);
   int getPinCost(int pin_idx);
   int64 getGroupCost(int group_idx);
-  void perturbAssignment(std::vector<int>& pins, int& prev_cost);
-  int swapPins(std::vector<int>& pins);
-  int movePinToFreeSlot(std::vector<int>& pin);
-  int moveGroupToFreeSlots(const int group_idx, std::vector<int>& pins);
-  void restorePreviousAssignment(const std::vector<int>& pins);
+  void perturbAssignment(int& prev_cost);
+  int swapPins();
+  int swapGroups(const int pin1, const int pin2);
+  void swapGroupWithGroup(const int group_idx1, const int group_idx2);
+  void swapGroupWithPin(const int group_idx, const int pin_idx);
+  void moveGroupToSlot(const int group_idx, int slot_idx);
+  void movePinToSlot(const int pin_idx, const int slot_idx);
+  void freeSlotsFromGroup(const int group_idx);
+  void movePinsToFreeSlots(const std::vector<int>& pin_indices);
+  int movePinToFreeSlot();
+  int moveGroupToFreeSlots(const int group_idx);
+  void restorePreviousAssignment();
   double dbuToMicrons(int64_t dbu);
   bool isFreeForGroup(int slot_idx, int group_size);
 
@@ -99,6 +106,7 @@ class SimulatedAnnealing
 
   std::vector<int> prev_slots_;
   std::vector<int> new_slots_;
+  std::vector<int> pins_;
 
   // annealing variables
   float init_temperature_ = 1.0;
