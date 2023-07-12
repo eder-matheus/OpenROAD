@@ -748,7 +748,8 @@ void IOPlacer::findSlots(const std::set<int>& layers, Edge edge)
       curr_y = pos.getY();
       bool blocked = vertical ? checkBlocked(edge, curr_x, layer)
                               : checkBlocked(edge, curr_y, layer);
-      slots_.push_back({blocked, false, Point(curr_x, curr_y), layer, edge});
+      slots_.push_back(
+          {blocked, false, Point(curr_x, curr_y), layer, edge, -1});
     }
     i++;
   }
@@ -2266,7 +2267,7 @@ void IOPlacer::findSlotsForTopLayer()
       for (int y = top_grid_->lly(); y < top_grid_->ury();
            y += top_grid_->y_step) {
         top_layer_slots_.push_back(
-            {false, false, Point(x, y), top_grid_->layer, Edge::invalid});
+            {false, false, Point(x, y), top_grid_->layer, Edge::invalid, -1});
       }
     }
 
