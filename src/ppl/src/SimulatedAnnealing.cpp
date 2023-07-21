@@ -78,12 +78,13 @@ void SimulatedAnnealing::run(float init_temperature,
     int64 pre_cost = 0;
     pre_cost = getAssignmentCost();
     float temperature = init_temperature_;
+    bool perturbation;
 
     boost::random::uniform_real_distribution<float> distribution;
     for (int iter = 0; iter < max_iterations_; iter++) {
       for (int perturb = 0; perturb < perturb_per_iter_; perturb++) {
         int prev_cost;
-        perturbAssignment(prev_cost);
+        perturbation = perturbAssignment(prev_cost);
 
         const int64 cost = pre_cost + getDeltaCost(prev_cost);
         const int delta_cost = cost - pre_cost;
@@ -104,8 +105,25 @@ void SimulatedAnnealing::run(float init_temperature,
         if (delta_cost <= 0 || accept_prob > rand_float) {
           // accept new solution, update cost and slots
           pre_cost = cost;
-          if (!prev_slots_.empty() && prev_slots_.size() == new_slots_.size()) {
+          if (perturbation == move_) {
             for (int i = 0; i < prev_slots_.size(); i++) {
+              int prev_slot = prev_slots_[i];
+              int new_slot = new_slots_[i];
+              slots_[prev_slot].used = false;
+              slots_[prev_slot].pin_idx = -1;
+              slots_[new_slot].used = true;
+              slots_[new_slot].pin_idx = pins_[i];
+            }
+          } else {
+            // first two pins that were simple swapped
+            // just update the Slot pin idx
+            for (int i = 0; i < 2; i++) {
+              int new_slot = new_slots_[i];
+              slots_[new_slot].pin_idx = pins_[i];
+            }
+
+            // for the remaining pins, free the old slots and update the new ones
+            for (int i = 2; i < prev_slots_.size(); i++) {
               int prev_slot = prev_slots_[i];
               int new_slot = new_slots_[i];
               slots_[prev_slot].used = false;
@@ -318,8 +336,9 @@ int64 SimulatedAnnealing::getGroupCost(int group_idx)
   return cost;
 }
 
-void SimulatedAnnealing::perturbAssignment(int& prev_cost)
+bool SimulatedAnnealing::perturbAssignment(int& prev_cost)
 {
+  bool perturbation;
   boost::random::uniform_real_distribution<float> distribution;
   const float move = distribution(generator_);
 
@@ -327,6 +346,7 @@ void SimulatedAnnealing::perturbAssignment(int& prev_cost)
   // necessary
   if (move < swap_pins_ && lone_pins_ > 1) {
     prev_cost = swapPins();
+    perturbation = swap_;
   }
 
   // move single pin when swapping a single constrained pin is not possible
@@ -336,7 +356,14 @@ void SimulatedAnnealing::perturbAssignment(int& prev_cost)
     if (prev_cost == move_fail_) {
       prev_cost = movePinToFreeSlot(true);
     }
+    perturbation = move_;
   }
+
+  if (!illegal_pins_.empty()) {
+    prev_cost += legalizePins();
+  }
+
+  return perturbation;
 }
 
 int SimulatedAnnealing::swapPins()
@@ -382,6 +409,9 @@ int SimulatedAnnealing::swapPins()
 
   int prev_slot2 = pin_assignment_[pin2];
   prev_slots_.push_back(prev_slot2);
+
+  new_slots_.push_back(prev_slot2);
+  new_slots_.push_back(prev_slot1);
 
   int prev_cost = getPinCost(pin1) + getPinCost(pin2);
 
@@ -609,14 +639,53 @@ int SimulatedAnnealing::moveMirroredPin(int pin1, int pin2)
     int mirrored_idx = io_pin1.getMirrorPinIdx();
     prev_cost += getPinCost(mirrored_idx);
 
-    int prev_mirrored_slot1 = pin_assignment_[mirrored_idx];
+    int prev_mirrored_slot = pin_assignment_[mirrored_idx];
     pins_.push_back(mirrored_idx);
-    prev_slots_.push_back(prev_mirrored_slot1);
+    prev_slots_.push_back(prev_mirrored_slot);
 
     int new_mirrored_slot;
     isFreeForMirrored(pin_assignment_[pin1], new_mirrored_slot);
     pin_assignment_[mirrored_idx] = new_mirrored_slot;
+
+    new_slots_.push_back(new_mirrored_slot);
+
+    if (slots_[new_mirrored_slot].used) {
+      illegal_pins_.push_back(slots_[new_mirrored_slot].pin_idx);
+    }
   }
+
+  return prev_cost;
+}
+
+int SimulatedAnnealing::legalizePins()
+{
+  int prev_cost = 0;
+  for (int pin : illegal_pins_) {
+    const IOPin& io_pin = netlist_->getIoPin(pin);
+    if (io_pin.isInGroup()) {
+      prev_cost += moveGroupToFreeSlots(io_pin.getGroupIdx());
+    } else {
+      int first_slot = 0;
+      int last_slot = num_slots_ - 1;
+      getSlotsRange(io_pin, first_slot, last_slot);
+      boost::random::uniform_int_distribution<int> distribution(first_slot,
+                                                                last_slot);
+
+      pins_.push_back(pin);
+      prev_slots_.push_back(pin_assignment_[pin]);
+
+      bool free_slot = false;
+      int new_slot;
+      while (!free_slot) {
+        new_slot = distribution(generator_);
+        free_slot = slots_[new_slot].isAvailable();
+      }
+      prev_cost += getPinCost(pin);
+      new_slots_.push_back(new_slot);
+      pin_assignment_[pin] = new_slot;
+    }
+  }
+  illegal_pins_.clear();
 
   return prev_cost;
 }

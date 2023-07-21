@@ -1980,7 +1980,7 @@ void IOPlacer::checkPinPlacement()
   }
 
   if (invalid) {
-    logger_->error(PPL, 107, "Invalid pin placement.");
+    logger_->warn(PPL, 107, "Invalid pin placement.");
   }
 }
 

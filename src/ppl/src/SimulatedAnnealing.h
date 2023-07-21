@@ -84,7 +84,7 @@ class SimulatedAnnealing
   int getDeltaCost(int prev_cost);
   int getPinCost(int pin_idx);
   int64 getGroupCost(int group_idx);
-  void perturbAssignment(int& prev_cost);
+  bool perturbAssignment(int& prev_cost);
   int swapPins();
   int movePinToFreeSlot(bool lone_pin = false);
   int moveGroupToFreeSlots(int group_idx);
@@ -95,6 +95,7 @@ class SimulatedAnnealing
   int getSlotIdxByPosition(const odb::Point& position, int layer) const;
   bool isFreeForMirrored(const int slot_idx, int& mirrored_idx) const;
   int moveMirroredPin(int pin1, int pin2);
+  int legalizePins();
 
   // [pin] -> slot
   std::vector<int> pin_assignment_;
@@ -112,6 +113,7 @@ class SimulatedAnnealing
   std::vector<int> prev_slots_;
   std::vector<int> new_slots_;
   std::vector<int> pins_;
+  std::vector<int> illegal_pins_;
 
   // annealing variables
   float init_temperature_ = 1.0;
@@ -128,6 +130,8 @@ class SimulatedAnnealing
   odb::dbDatabase* db_;
   const int fail_cost_ = std::numeric_limits<int>::max();
   const int seed_ = 42;
+  const bool swap_ = true;
+  const bool move_ = false;
 };
 
 }  // namespace ppl
