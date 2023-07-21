@@ -87,23 +87,24 @@ void SimulatedAnnealing::run(float init_temperature,
 
         const int64 cost = pre_cost + getDeltaCost(prev_cost);
         const int delta_cost = cost - pre_cost;
-        debugPrint(logger_,
-                  utl::PPL,
-                  "annealing",
-                  1,
-                  "iteration: {}; temperature: {}; assignment cost: {}um; delta "
-                  "cost: {}um",
-                  iter,
-                  temperature,
-                  dbuToMicrons(cost),
-                  dbuToMicrons(delta_cost));
+        debugPrint(
+            logger_,
+            utl::PPL,
+            "annealing",
+            1,
+            "iteration: {}; temperature: {}; assignment cost: {}um; delta "
+            "cost: {}um",
+            iter,
+            temperature,
+            dbuToMicrons(cost),
+            dbuToMicrons(delta_cost));
 
         const float rand_float = distribution(generator_);
         const float accept_prob = std::exp((-1) * delta_cost / temperature);
         if (delta_cost <= 0 || accept_prob > rand_float) {
           // accept new solution, update cost and slots
           pre_cost = cost;
-          if (!prev_slots_.empty() && !new_slots_.empty()) {
+          if (!prev_slots_.empty() && prev_slots_.size() == new_slots_.size()) {
             for (int i = 0; i < prev_slots_.size(); i++) {
               int prev_slot = prev_slots_[i];
               int new_slot = new_slots_[i];
@@ -379,6 +380,9 @@ int SimulatedAnnealing::swapPins()
 
   std::swap(pin_assignment_[pin1], pin_assignment_[pin2]);
 
+  prev_cost += moveMirroredPin(pin1, pin2);
+  prev_cost += moveMirroredPin(pin2, pin1);
+
   return prev_cost;
 }
 
@@ -588,6 +592,26 @@ bool SimulatedAnnealing::isFreeForMirrored(const int slot_idx,
   const Slot& mirrored_slot = slots_[mirrored_idx];
 
   return slot.isAvailable() && mirrored_slot.isAvailable();
+}
+
+int SimulatedAnnealing::moveMirroredPin(int pin1, int pin2)
+{
+  int prev_cost = 0;
+  const IOPin& io_pin1 = netlist_->getIoPin(pin1);
+  if (io_pin1.isMirrored() && io_pin1.getMirrorPinIdx() != pin2) {
+    int mirrored_idx = io_pin1.getMirrorPinIdx();
+    prev_cost += getPinCost(mirrored_idx);
+
+    int prev_mirrored_slot1 = pin_assignment_[mirrored_idx];
+    pins_.push_back(mirrored_idx);
+    prev_slots_.push_back(prev_mirrored_slot1);
+
+    int new_mirrored_slot;
+    isFreeForMirrored(pin_assignment_[pin1], new_mirrored_slot);
+    pin_assignment_[mirrored_idx] = new_mirrored_slot;
+  }
+
+  return prev_cost;
 }
 
 }  // namespace ppl
