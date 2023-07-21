@@ -109,7 +109,9 @@ void SimulatedAnnealing::run(float init_temperature,
               int prev_slot = prev_slots_[i];
               int new_slot = new_slots_[i];
               slots_[prev_slot].used = false;
+              slots_[prev_slot].pin_idx = -1;
               slots_[new_slot].used = true;
+              slots_[new_slot].pin_idx = pins_[i];
             }
           }
         } else {
@@ -197,9 +199,11 @@ void SimulatedAnnealing::randomAssignment()
       }
       pin_assignment_[i] = slot;
       slots_[slot].used = true;
+      slots_[slot].pin_idx = i;
       if (io_pin.isMirrored()) {
         pin_assignment_[io_pin.getMirrorPinIdx()] = mirrored_slot;
         slots_[mirrored_slot].used = true;
+        slots_[mirrored_slot].pin_idx = io_pin.getMirrorPinIdx();
       }
       placed_pins.insert(io_pin.getMirrorPinIdx());
     } else {
@@ -219,9 +223,11 @@ void SimulatedAnnealing::randomAssignment()
       }
       pin_assignment_[i] = slot;
       slots_[slot].used = true;
+      slots_[slot].pin_idx = i;
       if (io_pin.isMirrored()) {
         pin_assignment_[io_pin.getMirrorPinIdx()] = mirrored_slot;
         slots_[mirrored_slot].used = true;
+        slots_[mirrored_slot].pin_idx = io_pin.getMirrorPinIdx();
       }
       placed_pins.insert(io_pin.getMirrorPinIdx());
 
@@ -258,10 +264,11 @@ int SimulatedAnnealing::randomAssignmentForGroups(
       group_slot = slot_indices[slot_idx];
     }
 
-    const auto pin_list = group.pin_indices;
-    for (const auto& pin_idx : pin_list) {
+    const std::vector<int> pin_list = group.pin_indices;
+    for (const int& pin_idx : pin_list) {
       pin_assignment_[pin_idx] = group_slot;
       slots_[group_slot].used = true;
+      slots_[group_slot].pin_idx = pin_idx;
       group_slot++;
       placed_pins.insert(pin_idx);
     }
