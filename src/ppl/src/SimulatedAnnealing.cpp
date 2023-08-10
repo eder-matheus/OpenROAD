@@ -99,7 +99,8 @@ void SimulatedAnnealing::run(float init_temperature,
 
         const float rand_float = distribution(generator_);
         const float accept_prob = std::exp((-1) * delta_cost / temperature);
-        if (delta_cost <= 0 || accept_prob > rand_float) {
+        if ((delta_cost <= 0 || accept_prob > rand_float)
+            && prev_cost != move_fail_) {
           // accept new solution, update cost and slots
           pre_cost = cost;
           if (!prev_slots_.empty() && !new_slots_.empty()) {
@@ -381,11 +382,12 @@ void SimulatedAnnealing::perturbAssignment(int& prev_cost)
     prev_cost = swapPins();
   }
 
-  // move single pin when swapping a single constrained pin is not possible
+  // move single pin or pin group when swapping a single constrained pin is not
+  // possible
   if (move >= swap_pins_ || lone_pins_ <= 1 || prev_cost == move_fail_) {
     prev_cost = movePinToFreeSlot();
     // move single pin when moving a group is not possible
-    if (prev_cost == move_fail_) {
+    if (prev_cost == move_fail_ && lone_pins_ > 0) {
       prev_cost = movePinToFreeSlot(true);
     }
   }
