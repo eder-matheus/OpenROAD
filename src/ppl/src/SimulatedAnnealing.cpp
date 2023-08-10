@@ -71,7 +71,14 @@ void SimulatedAnnealing::run(float init_temperature,
                              bool random)
 {
   init(init_temperature, max_iterations, perturb_per_iter, alpha);
-  randomAssignment();
+  debugPrint(logger_,
+             utl::PPL,
+             "annealing",
+             1,
+             "Lone pins: {}; Pin groups: {}; Pins in groups: {}",
+             lone_pins_,
+             num_groups_,
+             num_pins_ - lone_pins_) randomAssignment();
   if (!random) {
     int64 pre_cost = 0;
     pre_cost = getAssignmentCost();
