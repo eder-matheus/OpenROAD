@@ -1,9 +1,9 @@
 /////////////////////////////////////////////////////////////////////////////
 //
-// BSD 3-Clause License
-//
-// Copyright (c) 2019, The Regents of the University of California
+// Copyright (c) 2023, Precision Innovations Inc.
 // All rights reserved.
+//
+// BSD 3-Clause License
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -33,29 +33,47 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "PreChecks.hh"
+#include "rsz/Resizer.hh"
+#include "db_sta/dbNetwork.hh"
+#include "sta/Corner.hh"
+#include "sta/LibertyClass.hh"
+#include "utl/Logger.h"
 
-#include "gui/gui.h"
+namespace rsz {
 
-namespace stt {
+using sta::LibertyCell;
+using sta::LibertyCellSeq;
+using utl::RSZ;
 
-struct Tree;
+PreChecks::PreChecks(Resizer* resizer) :
+        logger_(nullptr),
+        sta_(nullptr),
+        resizer_(resizer),
+        best_case_slew_computed_(false) {
+  logger_ = resizer_->logger_;
+  sta_ = resizer_->sta_;
+}
 
-// Simple general purpose render for a group of lines.
-class LinesRenderer : public gui::Renderer
-{
- public:
-  void highlight(std::vector<std::pair<odb::Point, odb::Point>>& lines,
-                 const gui::Painter::Color& color);
-  void drawObjects(gui::Painter& /* painter */) override;
-  // singleton for debug functions
-  static LinesRenderer* lines_renderer;
+void PreChecks::checkSlewLimit(float ref_cap, float max_load_slew) {
+  // Ensure the max slew value specified is something the library can
+  // potentially handle
+  if (!best_case_slew_computed_ || ref_cap < best_case_slew_load_) {
+    LibertyCellSeq *equiv_cells = sta_->equivCells(resizer_->buffer_lowest_drive_);
+    float slew = resizer_->bufferSlew(resizer_->buffer_lowest_drive_, ref_cap, resizer_->tgt_slew_dcalc_ap_);
+    if (equiv_cells != nullptr) {
+      for (LibertyCell *buffer: *equiv_cells) {
+        slew = std::min(slew, resizer_->bufferSlew(buffer, ref_cap, resizer_->tgt_slew_dcalc_ap_));
+      }
+    }
+    best_case_slew_computed_ = true;
+    best_case_slew_load_ = ref_cap;
+    best_case_slew_ = slew;
+  }
 
- private:
-  std::vector<std::pair<odb::Point, odb::Point>> lines_;
-  gui::Painter::Color color_;
-};
-
-void highlightSteinerTree(const Tree& tree, gui::Gui* gui);
-
-}  // namespace stt
+  if (max_load_slew < best_case_slew_) {
+    logger_->error(RSZ, 90, "Max transition time from SDC is {}. Best achievable transition time is {} with a load of {}",
+                   max_load_slew, best_case_slew_, best_case_slew_load_);
+  }
+}
+} // namespace rsz

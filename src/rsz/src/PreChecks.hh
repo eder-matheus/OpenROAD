@@ -1,7 +1,9 @@
-// BSD 3-Clause License
+/////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (c) 2020, MICL, DD-Lab, University of Michigan
+// Copyright (c) 2023, Precision Innovations Inc.
 // All rights reserved.
+//
+// BSD 3-Clause License
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -28,43 +30,32 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+//
+///////////////////////////////////////////////////////////////////////////////
 
-#include "ant/MakeAntennaChecker.hh"
+#pragma once
+#include "db_sta/dbSta.hh"
 
-#include "ant/AntennaChecker.hh"
-#include "grt/GlobalRouter.h"
-#include "ord/OpenRoad.hh"
-#include "sta/StaMain.hh"
+namespace rsz {
 
-namespace sta {
-// Tcl files encoded into strings.
-extern const char* ant_tcl_inits[];
-}  // namespace sta
+class Resizer;
+using utl::Logger;
+using dbSta = sta::dbSta;
 
-extern "C" {
-extern int Ant_Init(Tcl_Interp* interp);
-}
+class PreChecks {
+public:
+  PreChecks(Resizer* resizer);
+  void checkSlewLimit(float ref_cap, float max_load_slew);
 
-namespace ord {
+private:
+  Logger *logger_;
+  dbSta *sta_;
+  Resizer *resizer_;
 
-ant::AntennaChecker* makeAntennaChecker()
-{
-  return new ant::AntennaChecker;
-}
+  // best slew numbers to ensure the max_slew in SDC is reasonable
+  float best_case_slew_;
+  float best_case_slew_load_;
+  bool best_case_slew_computed_;
+};
 
-void deleteAntennaChecker(ant::AntennaChecker* antenna_checker)
-{
-  delete antenna_checker;
-}
-
-void initAntennaChecker(OpenRoad* openroad)
-{
-  Tcl_Interp* tcl_interp = openroad->tclInterp();
-
-  Ant_Init(tcl_interp);
-  sta::evalTclInit(tcl_interp, sta::ant_tcl_inits);
-  openroad->getAntennaChecker()->init(
-      openroad->getDb(), openroad->getGlobalRouter(), openroad->getLogger());
-}
-
-}  // namespace ord
+} // namespace rsz
