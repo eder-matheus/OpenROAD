@@ -219,6 +219,11 @@ dbTechLayerForbiddenSpacingRule* dbTechLayerForbiddenSpacingRule::create(
   _dbTechLayer* layer = (_dbTechLayer*) _layer;
   _dbTechLayerForbiddenSpacingRule* newrule
       = layer->forbidden_spacing_rules_tbl_->create();
+  newrule->forbidden_spacing_ = std::pair<int, int>(0, 0);
+  newrule->width_ = 0;
+  newrule->within_ = 0;
+  newrule->prl_ = 0;
+  newrule->two_edges_ = 0;
   return ((dbTechLayerForbiddenSpacingRule*) newrule);
 }
 
