@@ -763,6 +763,22 @@ class frLayer
     return lef58DefaultInterCutSpacingTableConstraint;
   }
 
+  void addLef58ForbiddenSpacingConstraint(frLef58ForbiddenSpacingConstraint* in)
+  {
+    lef58ForbiddenSpacingConstraints.push_back(in);
+  }
+
+  const std::vector<frLef58ForbiddenSpacingConstraint*>&
+  getLef58ForbiddenSpacingConstraints() const
+  {
+    return lef58ForbiddenSpacingConstraints;
+  }
+
+  bool hasLef58ForbiddenSpacingConstraint() const
+  {
+    return (!lef58ForbiddenSpacingConstraints.empty());
+  }
+
   void setDrEolSpacingConstraint(frCoord width, frCoord space, frCoord within)
   {
     drEolCon.eolWidth = width;
@@ -843,6 +859,8 @@ class frLayer
   std::vector<frMetalWidthViaConstraint*> metalWidthViaConstraints;
   std::vector<frLef58AreaConstraint*> lef58AreaConstraints;
   std::vector<frLef58KeepOutZoneConstraint*> keepOutZoneConstraints;
+  std::vector<frLef58ForbiddenSpacingConstraint*>
+      lef58ForbiddenSpacingConstraints;
   drEolSpacingConstraint drEolCon;
 };
 }  // namespace fr

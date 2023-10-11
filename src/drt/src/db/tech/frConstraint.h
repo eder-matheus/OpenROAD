@@ -223,6 +223,8 @@ class frConstraint
 
       case frConstraintTypeEnum::frcLef58AreaConstraint:
         return "Lef58Area";
+      case frConstraintTypeEnum::frcLef58ForbiddenSpacingConstraint:
+        return "Lef58ForbiddenSpacing";
       case frConstraintTypeEnum::frcLef58KeepOutZoneConstraint:
         return "KeepOutZone";
     }
@@ -2442,6 +2444,42 @@ class frLef58KeepOutZoneConstraint : public frConstraint
  private:
   odb::dbTechLayerKeepOutZoneRule* db_rule_;
 };
+
+class frLef58ForbiddenSpacingConstraint : public frConstraint
+{
+ public:
+  // constructor
+  frLef58ForbiddenSpacingConstraint(
+      odb::dbTechLayerForbiddenSpacingRule* dbRule)
+      : db_rule_(dbRule)
+  {
+  }
+  // getter
+  odb::dbTechLayerForbiddenSpacingRule* getODBRule() const { return db_rule_; }
+
+  // others
+  frConstraintTypeEnum typeId() const override
+  {
+    return frConstraintTypeEnum::frcLef58ForbiddenSpacingConstraint;
+  }
+
+  void report(utl::Logger* logger) const override
+  {
+    logger->report(
+        "LEF58 FORBIDDENSPACING: forbiddenSpacing ({} {}), width {}, within "
+        "{}, prl {}, twoEdges {}",
+        db_rule_->getForbiddenSpacing().first,
+        db_rule_->getForbiddenSpacing().second,
+        db_rule_->getWidth(),
+        db_rule_->getWithin(),
+        db_rule_->getPrl(),
+        db_rule_->getTwoEdges());
+  }
+
+ private:
+  odb::dbTechLayerForbiddenSpacingRule* db_rule_;
+};
+
 using namespace std;
 class frNonDefaultRule
 {
