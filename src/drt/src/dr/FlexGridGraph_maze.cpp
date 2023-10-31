@@ -38,7 +38,8 @@ void FlexGridGraph::expand(FlexWavefrontGrid& currGrid,
                            const frDirEnum& dir,
                            const FlexMazeIdx& dstMazeIdx1,
                            const FlexMazeIdx& dstMazeIdx2,
-                           const Point& centerPt)
+                           const Point& centerPt,
+                           std::string net_name)
 {
   frCost nextEstCost, nextPathCost;
   int gridX = currGrid.x();
@@ -53,7 +54,8 @@ void FlexGridGraph::expand(FlexWavefrontGrid& currGrid,
       = getEstCost(FlexMazeIdx(currGrid.x(), currGrid.y(), currGrid.z()),
                    dstMazeIdx1,
                    dstMazeIdx2,
-                   dir);
+                   dir,
+                   net_name);
   nextPathCost = getNextPathCost(currGrid, dir);
   Point currPt;
   getPoint(currPt, gridX, gridY);
@@ -152,11 +154,12 @@ void FlexGridGraph::expand(FlexWavefrontGrid& currGrid,
 void FlexGridGraph::expandWavefront(FlexWavefrontGrid& currGrid,
                                     const FlexMazeIdx& dstMazeIdx1,
                                     const FlexMazeIdx& dstMazeIdx2,
-                                    const Point& centerPt)
+                                    const Point& centerPt,
+                                    std::string net_name)
 {
   for (const auto dir : frDirEnumAll) {
     if (isExpandable(currGrid, dir)) {
-      expand(currGrid, dir, dstMazeIdx1, dstMazeIdx2, centerPt);
+      expand(currGrid, dir, dstMazeIdx1, dstMazeIdx2, centerPt, net_name);
     }
   }
 }
@@ -164,8 +167,12 @@ void FlexGridGraph::expandWavefront(FlexWavefrontGrid& currGrid,
 frCost FlexGridGraph::getEstCost(const FlexMazeIdx& src,
                                  const FlexMazeIdx& dstMazeIdx1,
                                  const FlexMazeIdx& dstMazeIdx2,
-                                 const frDirEnum& dir) const
+                                 const frDirEnum& dir,
+                                 std::string net_name) const
 {
+  if (net_name == "fdct_zigzag.dct_mod.dct_block_3.dct_unit_4.coef\\[15\\]") {
+    logger_->report("Src: {}\nDst1: {}\nDst2: {}", src, dstMazeIdx1, dstMazeIdx2);
+  }
   int gridX = src.x();
   int gridY = src.y();
   int gridZ = src.z();
@@ -249,6 +256,10 @@ frCost FlexGridGraph::getEstCost(const FlexMazeIdx& src,
       forbiddenPenalty = 2 * ggDRCCost_ * edgeLength;
     }
   }
+
+  // Calculate via off grid cost in case of changing layers between non-adjacent layers
+
+
   return (minCostX + minCostY + minCostZ + bendCnt + forbiddenPenalty);
 }
 
@@ -837,7 +848,7 @@ bool FlexGridGraph::search(vector<FlexMazeIdx>& connComps,
         std::numeric_limits<frCoord>::max(),
         currDist,
         0,
-        getEstCost(idx, dstMazeIdx1, dstMazeIdx2, frDirEnum::UNKNOWN));
+        getEstCost(idx, dstMazeIdx1, dstMazeIdx2, frDirEnum::UNKNOWN, nextPin->getNet()->getFrNet()->getName()));
     if (ndr_ && AUTO_TAPER_NDR_NETS) {
       auto it = mazeIdx2TaperBox.find(idx);
       if (it != mazeIdx2TaperBox.end())
@@ -865,7 +876,7 @@ bool FlexGridGraph::search(vector<FlexMazeIdx>& connComps,
       return true;
     } else {
       // expand and update wavefront
-      expandWavefront(currGrid, dstMazeIdx1, dstMazeIdx2, centerPt);
+      expandWavefront(currGrid, dstMazeIdx1, dstMazeIdx2, centerPt, nextPin->getNet()->getFrNet()->getName());
     }
   }
   return false;

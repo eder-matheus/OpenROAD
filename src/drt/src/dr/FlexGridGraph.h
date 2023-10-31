@@ -1187,7 +1187,8 @@ class FlexGridGraph
   frCost getEstCost(const FlexMazeIdx& src,
                     const FlexMazeIdx& dstMazeIdx1,
                     const FlexMazeIdx& dstMazeIdx2,
-                    const frDirEnum& dir) const;
+                    const frDirEnum& dir,
+                    std::string net_name) const;
   frCost getNextPathCost(const FlexWavefrontGrid& currGrid,
                          const frDirEnum& dir) const;
   frDirEnum getLastDir(const std::bitset<WAVEFRONTBITSIZE>& buffer) const;
@@ -1199,7 +1200,8 @@ class FlexGridGraph
   void expandWavefront(FlexWavefrontGrid& currGrid,
                        const FlexMazeIdx& dstMazeIdx1,
                        const FlexMazeIdx& dstMazeIdx2,
-                       const Point& centerPt);
+                       const Point& centerPt,
+                       std::string net_name);
   bool isExpandable(const FlexWavefrontGrid& currGrid, frDirEnum dir) const;
   FlexMazeIdx getTailIdx(const FlexMazeIdx& currIdx,
                          const FlexWavefrontGrid& currGrid) const;
@@ -1207,7 +1209,8 @@ class FlexGridGraph
               const frDirEnum& dir,
               const FlexMazeIdx& dstMazeIdx1,
               const FlexMazeIdx& dstMazeIdx2,
-              const Point& centerPt);
+              const Point& centerPt,
+              std::string net_name);
   bool hasAlignedUpDefTrack(
       frLayerNum layerNum,
       const map<frLayerNum, frTrackPattern*>& xSubMap,
