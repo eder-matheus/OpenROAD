@@ -1345,6 +1345,34 @@ void FlexDRWorker::modInterLayerCutSpacingCost(const Rect& box,
   }
 }
 
+void FlexDRWorker::modForbiddenSpacingCost(const Rect& box,
+                                           frMIdx z,
+                                           ModCostType type,
+                                           bool isBlockage,
+                                           frNonDefaultRule* ndr,
+                                           bool isMacroPin,
+                                           bool resetHorz,
+                                           bool resetVert)
+{
+  auto layer_idx = gridGraph_.getLayerNum(z);
+  auto layer = getTech()->getLayer(layer_idx);
+
+  if (!layer->hasLef58ForbiddenSpacingConstraint()) {
+    return;
+  }
+
+  const auto& constraints
+      = getTech()->getLayer(layer_idx)->getLef58ForbiddenSpacingConstraints();
+  
+  for (auto con : constraints) {
+    odb::dbTechLayerForbiddenSpacingRule* db_rule = con->getODBRule();
+    auto [min_spacing, max_spacing] = db_rule->getForbiddenSpacing();
+    auto width = db_rule->getWidth();
+    auto prl = db_rule->getPrl();
+    auto two_edges = db_rule->getTwoEdges();
+  }
+}
+
 void FlexDRWorker::addPathCost(drConnFig* connFig, bool modEol, bool modCutSpc)
 {
   modPathCost(connFig, ModCostType::addRouteShape, modEol, modCutSpc);
@@ -1382,6 +1410,7 @@ void FlexDRWorker::modPathCost(drConnFig* connFig,
         modEolSpacingRulesCost(box, bi.z(), type, false, ndr);
       }
     }
+    modForbiddenSpacingCost(box, bi.z(), type, false, ndr);
   } else if (connFig->typeId() == drcPatchWire) {
     auto obj = static_cast<drPatchWire*>(connFig);
     frMIdx zIdx = gridGraph_.getMazeZIdx(obj->getLayerNum());
@@ -1392,6 +1421,7 @@ void FlexDRWorker::modPathCost(drConnFig* connFig,
     modMinSpacingCostVia(box, zIdx, type, false, true, false, ndr);
     if (modEol)
       modEolSpacingRulesCost(box, zIdx, type);
+    modForbiddenSpacingCost(box, zIdx, type, false, ndr);
   } else if (connFig->typeId() == drcVia) {
     auto obj = static_cast<drVia*>(connFig);
     auto [bi, ei] = obj->getMazeIdx();

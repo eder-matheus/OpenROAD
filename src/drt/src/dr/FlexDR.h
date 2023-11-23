@@ -858,6 +858,16 @@ class FlexDRWorker
   void modBlockedPlanar(const Rect& box, frMIdx z, bool setBlock);
   void modBlockedVia(const Rect& box, frMIdx z, bool setBlock);
 
+  // LEF58
+  void modForbiddenSpacingCost(const Rect& box,
+                               frMIdx z,
+                               ModCostType type,
+                               bool isBlockage = false,
+                               frNonDefaultRule* ndr = nullptr,
+                               bool isMacroPin = false,
+                               bool resetHorz = true,
+                               bool resetVert = true);
+
   bool mazeIterInit_sortRerouteNets(int mazeIter,
                                     std::vector<drNet*>& rerouteNets);
 
