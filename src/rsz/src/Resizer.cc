@@ -357,7 +357,9 @@ Resizer::ensureLevelDrvrVertices()
         level_drvr_vertices_.emplace_back(vertex);
       }
     }
-    sort(level_drvr_vertices_, VertexLevelLess(network_));
+    std::stable_sort(level_drvr_vertices_.begin(),
+                     level_drvr_vertices_.end(),
+                     VertexLevelLess(network_));
     level_drvr_vertices_valid_ = true;
   }
 }
@@ -468,8 +470,10 @@ Resizer::findBuffers()
     if (buffer_cells_.empty()) {
       logger_->error(RSZ, 22, "no buffers found.");
     } else {
-      sort(buffer_cells_, [this] (const LibertyCell *buffer1,
-                                  const LibertyCell *buffer2) {
+      std::stable_sort(buffer_cells_.begin(),
+                       buffer_cells_.end(),
+                       [this] (const LibertyCell *buffer1,
+                       const LibertyCell *buffer2) {
         return bufferDriveResistance(buffer1)
           > bufferDriveResistance(buffer2);
       });
@@ -1257,9 +1261,11 @@ Resizer::findResizeSlacks1()
 
   // Find the nets with the worst slack.
 
-  //  sort(nets.begin(), nets.end(). [&](const Net *net1,
-  sort(nets, [this](const Net *net1,
-                 const Net *net2)
+  //  std::stable_sort(nets.begin(), nets.end(). [&](const Net *net1,
+  std::stable_sort(nets.begin(),
+                   nets.end(),
+                   [this](const Net *net1,
+                   const Net *net2)
              { return resizeNetSlack(net1) < resizeNetSlack(net2); });
   worst_slack_nets_.clear();
   for (int i = 0; i < nets.size() * worst_slack_nets_percent_ / 100.0; i++) {
@@ -1972,8 +1978,10 @@ Resizer::findLongWires(VertexSeq &drvrs)
       }
     }
   }
-  sort(drvr_dists, [](const DrvrDist &drvr_dist1,
-                          const DrvrDist &drvr_dist2) {
+  std::stable_sort(drvr_dists.begin(),
+                   drvr_dists.end(),
+                   [](const DrvrDist &drvr_dist1,
+                   const DrvrDist &drvr_dist2) {
                     return drvr_dist1.second > drvr_dist2.second;
                   });
   drvrs.reserve(drvr_dists.size());
@@ -2051,7 +2059,9 @@ Resizer::findFloatingNets()
     }
   }
   delete net_iter;
-  sort(floating_nets, sta::NetPathNameLess(network_));
+  std::stable_sort(floating_nets->begin(),
+                   floating_nets->end(),
+                   sta::NetPathNameLess(network_));
   return floating_nets;
 }
 

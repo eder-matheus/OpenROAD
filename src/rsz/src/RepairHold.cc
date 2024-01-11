@@ -120,7 +120,7 @@ RepairHold::repairHold(const double setup_margin,
   for (Vertex *end : *ends) {
     ends1.push_back(end);
   }
-  sort(ends1, sta::VertexIdLess(graph_));
+  std::stable_sort(ends1.begin(), ends1.end(), sta::VertexIdLess(graph_));
 
   int max_buffer_count = max_buffer_percent * network_->instanceCount();
   resizer_->incrementalParasiticsBegin();
@@ -180,7 +180,7 @@ RepairHold::findHoldBuffer()
     }
   }
 
-  std::sort(buffers.begin(),
+  std::stable_sort(buffers.begin(),
             buffers.end(),
             [](const MetricBuffer& lhs, const MetricBuffer& rhs) {
               return lhs.metric < rhs.metric;
@@ -353,7 +353,7 @@ RepairHold::repairHoldPass(VertexSeq &hold_failures,
                            const int max_buffer_count)
 {
   resizer_->updateParasitics();
-  sort(hold_failures, [=] (Vertex *end1,
+  std::stable_sort(hold_failures.begin(), hold_failures.end(), [=] (Vertex *end1,
                            Vertex *end2) {
     return sta_->vertexSlack(end1, min_) < sta_->vertexSlack(end2, min_);
   });

@@ -126,7 +126,7 @@ RepairSetup::repairSetup(const float setup_slack_margin,
       violating_ends.push_back(end);
     }
   }
-  sort(violating_ends, [=](Vertex *end1, Vertex *end2) {
+  std::stable_sort(violating_ends.begin(), violating_ends.end(), [=](Vertex *end1, Vertex *end2) {
     return sta_->vertexSlack(end1, max_) < sta_->vertexSlack(end2, max_);
   });
   debugPrint(logger_, RSZ, "repair_setup", 1, "Violating endpoints {}/{} {}%",
@@ -374,7 +374,7 @@ RepairSetup::repairPath(PathRef &path,
       }
     }
 
-    sort(load_delays.begin(), load_delays.end(),
+    std::stable_sort(load_delays.begin(), load_delays.end(),
          [](pair<int, Delay> pair1,
             pair<int, Delay> pair2) {
            return pair1.second > pair2.second
@@ -604,7 +604,7 @@ RepairSetup::upsizeCell(LibertyPort *in_port,
   if (equiv_cells) {
     const char *in_port_name = in_port->name();
     const char *drvr_port_name = drvr_port->name();
-    sort(equiv_cells,
+    std::stable_sort(equiv_cells->begin(), equiv_cells->end(),
          [=] (const LibertyCell *cell1,
               const LibertyCell *cell2) {
            LibertyPort *port1=cell1->findLibertyPort(drvr_port_name)->cornerPort(lib_ap);
@@ -695,7 +695,7 @@ RepairSetup::cloneDriver(PathRef* drvr_path,
     fanout_slacks.emplace_back(fanout_vertex, slack_margin);
   }
 
-  sort(fanout_slacks.begin(), fanout_slacks.end(),
+  std::stable_sort(fanout_slacks.begin(), fanout_slacks.end(),
        [=](const pair<Vertex*, Slack>& pair1,
            const pair<Vertex*, Slack>& pair2) {
          return (pair1.second > pair2.second
@@ -818,7 +818,7 @@ RepairSetup::splitLoads(PathRef *drvr_path,
     }
   }
 
-  sort(fanout_slacks.begin(), fanout_slacks.end(),
+  std::stable_sort(fanout_slacks.begin(), fanout_slacks.end(),
        [=](const pair<Vertex*, Slack>& pair1,
            const pair<Vertex*, Slack>& pair2) {
          return (pair1.second > pair2.second

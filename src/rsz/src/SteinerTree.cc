@@ -79,7 +79,7 @@ Resizer::makeSteinerTree(const Pin *drvr_pin)
   // Find all the connected pins
   connectedPins(net, network_, db_network_, pinlocs);
   // Sort pins by location because connectedPins order is not deterministic.
-  sort(pinlocs, [=](const PinLoc& pin1, const PinLoc& pin2) {
+  std::stable_sort(pinlocs.begin(), pinlocs.end(), [=](const PinLoc& pin1, const PinLoc& pin2) {
       return pin1.loc.getX() < pin2.loc.getX()
         || (pin1.loc.getX() == pin2.loc.getX()
             && pin1.loc.getY() < pin2.loc.getY());

@@ -1397,7 +1397,7 @@ RepairDesign::findBufferUnderSlew(float max_slew,
   float min_slew = INF;
   LibertyCellSeq *equiv_cells = sta_->equivCells(resizer_->buffer_lowest_drive_);
   if (equiv_cells) {
-    sort(equiv_cells, [this] (const LibertyCell *buffer1,
+    std::stable_sort(equiv_cells->begin(), equiv_cells->end(), [this] (const LibertyCell *buffer1,
                               const LibertyCell *buffer2) {
       return resizer_->bufferDriveResistance(buffer1)
         > resizer_->bufferDriveResistance(buffer2);

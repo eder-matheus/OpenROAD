@@ -234,7 +234,7 @@ RepairSetup::rebufferBottomUp(const BufferedNetPtr& bnet,
     // larger required and smaller capacitance.
     // This is fanout^2.
     // Presort options to hit better options sooner.
-    sort(Z.begin(),
+    std::stable_sort(Z.begin(),
          Z.end(),
          [this](const BufferedNetPtr& option1, const BufferedNetPtr& option2) {
            Slack slack1 = slackPenalized(option1);

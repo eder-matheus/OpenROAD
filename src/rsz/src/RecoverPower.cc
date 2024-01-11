@@ -107,7 +107,7 @@ RecoverPower::recoverPower(float recover_power_percent)
     }
   }
 
-  sort(ends_with_slack, [=](Vertex *end1, Vertex *end2) {
+  std::stable_sort(ends_with_slack.begin(), ends_with_slack.end(), [=](Vertex *end1, Vertex *end2) {
     return sta_->vertexSlack(end1, max_) > sta_->vertexSlack(end2, max_);
   });
 
@@ -259,7 +259,7 @@ RecoverPower::recoverPower(PathRef &path, Slack path_slack)
     // Sort the delays for any specific path. This way we can pick the fastest
     // delay and downsize that cell to achieve our goal instead of messing with
     // too many cells.
-    sort(load_delays.begin(), load_delays.end(),
+    std::stable_sort(load_delays.begin(), load_delays.end(),
          [](pair<int, Delay> pair1,
             pair<int, Delay> pair2) {
            return pair1.second > pair2.second
@@ -367,9 +367,10 @@ RecoverPower::downsizeCell(LibertyPort *in_port,
   if (equiv_cells) {
     const char *in_port_name = in_port->name();
     const char *drvr_port_name = drvr_port->name();
-    sort(equiv_cells,
-         [=] (const LibertyCell *cell1,
-              const LibertyCell *cell2) {
+    std::stable_sort(equiv_cells->begin(),
+                     equiv_cells->end(),
+                     [=] (const LibertyCell *cell1,
+                     const LibertyCell *cell2) {
            LibertyPort *port1=cell1->findLibertyPort(drvr_port_name)->cornerPort(lib_ap);
            LibertyPort *port2=cell2->findLibertyPort(drvr_port_name)->cornerPort(lib_ap);
            float drive1 = port1->driveResistance();
