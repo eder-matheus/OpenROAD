@@ -130,6 +130,7 @@ class RepairAntennas
                            std::map<int, odb::dbTechVia*>& default_vias);
   RoutePtPins findRoutePtPins(Net* net);
   void addWireTerms(Net* net,
+                    const GSegment& seg,
                     GRoute& route,
                     int grid_x,
                     int grid_y,
@@ -139,6 +140,20 @@ class RepairAntennas
                     odb::dbWireEncoder& wire_encoder,
                     std::map<int, odb::dbTechVia*>& default_vias,
                     bool connect_to_segment);
+  bool pinParallelToSegment(const odb::Point& pin_pt, const GSegment& seg);
+  void connectPinFromWireMiddle(odb::dbWireEncoder& wire_encoder,
+                                odb::dbTechLayer* tech_layer,
+                                const GSegment& seg,
+                                const odb::Point& pin_pt,
+                                std::map<int, odb::dbTechVia*>& default_vias);
+  void connectPinFromWireEnd(odb::dbWireEncoder& wire_encoder,
+                             odb::dbTechLayer* tech_layer,
+                             odb::dbTechLayer* h_layer,
+                             odb::dbTechLayer* v_layer,
+                             const odb::Point& grid_pt,
+                             const odb::Point& pin_pt,
+                             std::map<int, odb::dbTechVia*>& default_vias,
+                             bool connect_to_segment);
   bool pinOverlapsGSegment(const odb::Point& pin_position,
                            const int pin_layer,
                            const std::vector<odb::Rect>& pin_boxes,

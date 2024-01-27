@@ -58,6 +58,7 @@ struct GSegment
   GSegment() = default;
   GSegment(int x0, int y0, int l0, int x1, int y1, int l1);
   bool isVia() const { return (init_x == final_x && init_y == final_y); }
+  bool isVertical() const { return init_x == final_x; }
   int length()
   {
     return std::abs(init_x - final_x) + std::abs(init_y - final_y);
