@@ -3412,6 +3412,12 @@ void GlobalRouter::getBlockage(odb::dbTechLayer* layer,
   }
 }
 
+void GlobalRouter::getBlockageData(boost::multi_array<int, 3>& hor_blockage,
+                                   boost::multi_array<int, 3>& ver_blockage)
+{
+  fastroute_->getBlockageData(hor_blockage, ver_blockage);
+}
+
 std::map<int, odb::dbTechVia*> GlobalRouter::getDefaultVias(
     int max_routing_layer)
 {
@@ -3793,10 +3799,7 @@ void GlobalRouter::reportNetDetailedRouteWL(odb::dbWire* wire,
 void GlobalRouter::createWLReportFile(const char* file_name, bool verbose)
 {
   std::ofstream out(file_name);
-  out << "tool "
-      << "net "
-      << "total_wl "
-      << "#pins ";
+  out << "tool " << "net " << "total_wl " << "#pins ";
 
   if (verbose) {
     out << "#vias ";

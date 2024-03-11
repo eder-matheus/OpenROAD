@@ -35,6 +35,7 @@
 
 #pragma once
 
+#include <boost/multi_array.hpp>
 #include <map>
 #include <memory>
 #include <set>
@@ -224,6 +225,8 @@ class GlobalRouter : public ant::GlobalRouteSource
                    int y,
                    uint8_t& blockage_h,
                    uint8_t& blockage_v);
+  void getBlockageData(boost::multi_array<int, 3>& hor_blockage,
+                       boost::multi_array<int, 3>& ver_blockage);
 
   // functions for random grt
   void setSeed(int seed) { seed_ = seed; }

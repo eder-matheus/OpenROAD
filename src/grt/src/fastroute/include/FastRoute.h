@@ -159,6 +159,8 @@ class FastRouteCore
                    int y,
                    uint8_t& blockage_h,
                    uint8_t& blockage_v);
+  void getBlockageData(multi_array<int, 3>& hor_blockage,
+                       multi_array<int, 3>& ver_blockage);
   void updateDbCongestion();
   void findCongestedEdgesNets(NetsPerCongestedArea& nets_in_congested_edges,
                               bool vertical);
