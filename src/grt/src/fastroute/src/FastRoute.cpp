@@ -839,8 +839,8 @@ void FastRouteCore::getBlockageData(multi_array<int, 3>& hor_blockage,
       for (int x = 0; x < x_grid_; x++) {
         if (x == x_grid_ - 1 && y == y_grid_ - 1 && x_grid_ > 1
             && y_grid_ > 1) {
-          hor_blockage[k][y][x - 1] = h_edges_3D_[k][y][x - 1].red;
-          ver_blockage[k][y - 1][x] = v_edges_3D_[k][y - 1][x].red;
+          hor_blockage[k][y][x] = h_edges_3D_[k][y][x - 1].red;
+          ver_blockage[k][y][x] = v_edges_3D_[k][y - 1][x].red;
         } else {
           hor_blockage[k][y][x] = h_edges_3D_[k][y][x].red;
           ver_blockage[k][y][x] = v_edges_3D_[k][y][x].red;
