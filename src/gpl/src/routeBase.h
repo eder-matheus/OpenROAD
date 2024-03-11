@@ -33,6 +33,7 @@
 
 #pragma once
 
+#include <boost/multi_array.hpp>
 #include <memory>
 #include <vector>
 
@@ -224,6 +225,10 @@ class RouteBase
   float minRcTargetDensity_ = 0;
   int minRcViolatedCnt_ = 0;
   std::vector<std::pair<int, int>> minRcCellSize_;
+
+  // blockage data from grt
+  boost::multi_array<int, 3> hor_blockage_;
+  boost::multi_array<int, 3> ver_blockage_;
 
   void init();
   void reset();
