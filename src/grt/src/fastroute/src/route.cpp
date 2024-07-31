@@ -1261,6 +1261,9 @@ void FastRouteCore::routeMonotonic(int netID,
           = std::abs(d2[y2][i] - d2[j][i]) + std::abs(d1[y2][i] - d1[y2][x2]);
       const float tmp4 = std::abs(d2[y2][x2] - d2[j][x2])
                          + std::abs(d1[j][x2] - d1[j][i]);  // xifrst for mid point
+                         
+      logger_->report("Net id: {}; j {} i {} tmp1 {} tmp2 {} tmp3 {} tmp4 {}",
+                       netID, j, i, tmp1, tmp2, tmp3, tmp4);
 
       float tmp = tmp1 + tmp4;
       bool LH1 = false;
