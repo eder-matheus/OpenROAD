@@ -32,9 +32,10 @@
 
 #pragma once
 
+#include <math.h>
+
 #include <cassert>
 #include <climits>
-#include <cmath>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>

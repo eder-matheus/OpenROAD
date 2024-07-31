@@ -1289,15 +1289,16 @@ float getCost(const int i,
   float cost;
   if (cost_type == 2) {
     if (i < capacity - 1)
-      cost = cost_height / (std::exp((capacity - i - 1) * logis_cof) + 1) + 1;
+      cost
+          = cost_height / (exp((float) (capacity - i - 1) * logis_cof) + 1) + 1;
     else
-      cost = cost_height / (std::exp((capacity - i - 1) * logis_cof) + 1) + 1
+      cost = cost_height / (exp((float) (capacity - i - 1) * logis_cof) + 1) + 1
              + cost_height / slope * (i - capacity);
   } else {
     if (i < capacity)
-      cost = cost_height / (std::exp((capacity - i) * logis_cof) + 1) + 1;
+      cost = cost_height / (exp((float) (capacity - i) * logis_cof) + 1) + 1;
     else
-      cost = cost_height / (std::exp((capacity - i) * logis_cof) + 1) + 1
+      cost = cost_height / (exp((float) (capacity - i) * logis_cof) + 1) + 1
              + cost_height / slope * (i - capacity);
   }
   return cost;
