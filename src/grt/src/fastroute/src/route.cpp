@@ -1261,9 +1261,6 @@ void FastRouteCore::routeMonotonic(int netID,
           = std::abs(d2[y2][i] - d2[j][i]) + std::abs(d1[y2][i] - d1[y2][x2]);
       const float tmp4 = std::abs(d2[y2][x2] - d2[j][x2])
                          + std::abs(d1[j][x2] - d1[j][i]);  // xifrst for mid point
-                         
-      logger_->report("Net id: {}; j {} i {} tmp1 {} tmp2 {} tmp3 {} tmp4 {}",
-                       netID, j, i, tmp1, tmp2, tmp3, tmp4);
 
       float tmp = tmp1 + tmp4;
       bool LH1 = false;
@@ -1296,7 +1293,7 @@ void FastRouteCore::routeMonotonic(int netID,
       }
     }
   }
-  logger_->report("\tbest {}", best);
+  logger_->report("\tbest {} bestp1x {} bestp1y {} BL1 {} BL2 {}", best, bestp1x, bestp1y, BL1, BL2);
   int cnt = 0;
   std::vector<short int>& gridsX = treeedge->route.gridsX;
   gridsX.resize(x_range_ + y_range_);
