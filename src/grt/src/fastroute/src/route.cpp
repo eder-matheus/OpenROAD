@@ -1296,6 +1296,7 @@ void FastRouteCore::routeMonotonic(int netID,
       }
     }
   }
+  logger_->report("\tbest {}", best);
   int cnt = 0;
   std::vector<short int>& gridsX = treeedge->route.gridsX;
   gridsX.resize(x_range_ + y_range_);
