@@ -1007,8 +1007,8 @@ NetRouteMap FastRouteCore::run()
   }
 
   for (int i = 0; i < LVIter; i++) {
-    LOGIS_COF = std::max<float>(2.0 / (1 + log(maxOverflow)), LOGIS_COF);
-    LOGIS_COF = 2.0 / (1 + log(maxOverflow));
+    LOGIS_COF = std::max<float>(2.0 / (1 + std::log(maxOverflow)), LOGIS_COF);
+    LOGIS_COF = 2.0 / (1 + std::log(maxOverflow));
     debugPrint(logger_,
                GRT,
                "patternRouting",
@@ -1127,9 +1127,9 @@ NetRouteMap FastRouteCore::run()
 
     if (upType == 3) {
       LOGIS_COF
-          = std::max<float>(2.0 / (1 + log(maxOverflow + max_adj)), LOGIS_COF);
+          = std::max<float>(2.0 / (1 + std::log(maxOverflow + max_adj)), LOGIS_COF);
     } else {
-      LOGIS_COF = std::max<float>(2.0 / (1 + log(maxOverflow)), LOGIS_COF);
+      LOGIS_COF = std::max<float>(2.0 / (1 + std::log(maxOverflow)), LOGIS_COF);
     }
 
     if (i == 8) {
