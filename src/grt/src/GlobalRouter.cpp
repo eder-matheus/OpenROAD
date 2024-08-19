@@ -282,6 +282,7 @@ void GlobalRouter::globalRoute(bool save_guides,
                    "defined together");
   } else if (start_incremental) {
     if (!initialized_ || haveDetailedRoutes()) {
+      block_ = db_->getChip()->getBlock();
       int min_layer, max_layer;
       getMinMaxLayer(min_layer, max_layer);
       initFastRoute(min_layer, max_layer);
