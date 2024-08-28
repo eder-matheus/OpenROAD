@@ -1134,9 +1134,10 @@ LibertyCell* Resizer::findTargetCell(LibertyCell* cell,
     for (LibertyCell* target_cell : *equiv_cells) {
       if (!dontUse(target_cell) && isLinkCell(target_cell)) {
         float target_load = (*target_load_map_)[target_cell];
-        float delay = is_buf_inv ? bufferDelay(
-                          target_cell, load_cap, tgt_slew_dcalc_ap_)
-                                 : 0.0;
+        float delay
+            = is_buf_inv
+                  ? bufferDelay(target_cell, load_cap, tgt_slew_dcalc_ap_)
+                  : 0.0;
         float dist = targetLoadDist(load_cap, target_load);
         debugPrint(logger_,
                    RSZ,
@@ -1253,7 +1254,8 @@ bool Resizer::replaceCell(Instance* inst,
     designAreaIncr(area(replacement_master));
 
     // Legalize the position of the instance in case it leaves the die
-    if (parasitics_src_ == ParasiticsSrc::global_routing) {
+    if (parasitics_src_ == ParasiticsSrc::global_routing
+        || parasitics_src_ == ParasiticsSrc::detailed_routing) {
       opendp_->legalCellPos(db_network_->staToDb(inst));
     }
     if (haveEstimatedParasitics()) {
@@ -2665,7 +2667,8 @@ void Resizer::repairDesign(double max_wire_length,
                            bool verbose)
 {
   resizePreamble();
-  if (parasitics_src_ == ParasiticsSrc::global_routing) {
+  if (parasitics_src_ == ParasiticsSrc::global_routing
+      || parasitics_src_ == ParasiticsSrc::detailed_routing) {
     opendp_->initMacrosAndGrid();
   }
   repair_design_->repairDesign(
@@ -2820,7 +2823,8 @@ void Resizer::repairSetup(double setup_margin,
                           bool skip_buffer_removal)
 {
   resizePreamble();
-  if (parasitics_src_ == ParasiticsSrc::global_routing) {
+  if (parasitics_src_ == ParasiticsSrc::global_routing
+      || parasitics_src_ == ParasiticsSrc::detailed_routing) {
     opendp_->initMacrosAndGrid();
   }
   repair_setup_->repairSetup(setup_margin,
@@ -2871,7 +2875,8 @@ void Resizer::repairHold(
   exclude_clock_buffers_ = false;
 
   resizePreamble();
-  if (parasitics_src_ == ParasiticsSrc::global_routing) {
+  if (parasitics_src_ == ParasiticsSrc::global_routing
+      || parasitics_src_ == ParasiticsSrc::detailed_routing) {
     opendp_->initMacrosAndGrid();
   }
   repair_hold_->repairHold(setup_margin,
@@ -2920,7 +2925,8 @@ int Resizer::holdBufferCount() const
 void Resizer::recoverPower(float recover_power_percent)
 {
   resizePreamble();
-  if (parasitics_src_ == ParasiticsSrc::global_routing) {
+  if (parasitics_src_ == ParasiticsSrc::global_routing
+      || parasitics_src_ == ParasiticsSrc::detailed_routing) {
     opendp_->initMacrosAndGrid();
   }
   recover_power_->recoverPower(recover_power_percent);
@@ -3451,7 +3457,8 @@ Instance* Resizer::makeInstance(LibertyCell* cell,
   db_inst->setSourceType(odb::dbSourceType::TIMING);
   setLocation(db_inst, loc);
   // Legalize the position of the instance in case it leaves the die
-  if (parasitics_src_ == ParasiticsSrc::global_routing) {
+  if (parasitics_src_ == ParasiticsSrc::global_routing
+      || parasitics_src_ == ParasiticsSrc::detailed_routing) {
     opendp_->legalCellPos(db_inst);
   }
   designAreaIncr(area(db_inst->getMaster()));
