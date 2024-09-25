@@ -3579,8 +3579,9 @@ void GlobalRouter::findLayerExtensions(std::vector<int>& layer_extensions)
       }
 
       // Save the extension to use when defining Macros
-
-      layer_extensions[level] = spacing_extension;
+      // increase the spacing extension in 50% to account possible vias near the
+      // macros
+      layer_extensions[level] = spacing_extension * 1.5;
     }
   }
 }
@@ -4474,10 +4475,7 @@ void GlobalRouter::reportNetDetailedRouteWL(odb::dbWire* wire,
 void GlobalRouter::createWLReportFile(const char* file_name, bool verbose)
 {
   std::ofstream out(file_name);
-  out << "tool "
-      << "net "
-      << "total_wl "
-      << "#pins ";
+  out << "tool " << "net " << "total_wl " << "#pins ";
 
   if (verbose) {
     out << "#vias ";
