@@ -3,6 +3,4 @@
 [INFO ODB-0131]     Created 2 components and 322 component-terminals.
 [INFO ODB-0133]     Created 1 nets and 2 connections.
 [WARNING GRT-0300] Timing is not available, setting critical nets percentage to 0.
-Differences found at line 6.
-296700 993600 303600 1200600 met4
-296700 993600 303600 1304100 met4
+No differences found.
