@@ -2834,7 +2834,7 @@ void Resizer::cloneClkInverter(Instance* inv)
 
 ////////////////////////////////////////////////////////////////
 
-void Resizer::repairSetup(double setup_margin,
+bool Resizer::repairSetup(double setup_margin,
                           double repair_tns_end_percent,
                           int max_passes,
                           bool match_cell_footprint,
@@ -2852,7 +2852,7 @@ void Resizer::repairSetup(double setup_margin,
       || parasitics_src_ == ParasiticsSrc::detailed_routing) {
     opendp_->initMacrosAndGrid();
   }
-  repair_setup_->repairSetup(setup_margin,
+  return repair_setup_->repairSetup(setup_margin,
                              repair_tns_end_percent,
                              max_passes,
                              verbose,
@@ -2883,7 +2883,7 @@ void Resizer::rebufferNet(const Pin* drvr_pin)
 
 ////////////////////////////////////////////////////////////////
 
-void Resizer::repairHold(
+bool Resizer::repairHold(
     double setup_margin,
     double hold_margin,
     bool allow_setup_violations,
@@ -2911,7 +2911,7 @@ void Resizer::repairHold(
       || parasitics_src_ == ParasiticsSrc::detailed_routing) {
     opendp_->initMacrosAndGrid();
   }
-  repair_hold_->repairHold(setup_margin,
+  return repair_hold_->repairHold(setup_margin,
                            hold_margin,
                            allow_setup_violations,
                            max_buffer_percent,
@@ -2947,7 +2947,7 @@ int Resizer::holdBufferCount() const
 }
 
 ////////////////////////////////////////////////////////////////
-void Resizer::recoverPower(float recover_power_percent,
+bool Resizer::recoverPower(float recover_power_percent,
                            bool match_cell_footprint)
 {
   utl::SetAndRestore<bool> set_match_footprint(match_cell_footprint_,
@@ -2957,7 +2957,7 @@ void Resizer::recoverPower(float recover_power_percent,
       || parasitics_src_ == ParasiticsSrc::detailed_routing) {
     opendp_->initMacrosAndGrid();
   }
-  recover_power_->recoverPower(recover_power_percent);
+  return recover_power_->recoverPower(recover_power_percent);
 }
 ////////////////////////////////////////////////////////////////
 // Journal to roll back changes
