@@ -583,7 +583,7 @@ repair_net_cmd(Net *net,
   resizer->repairNet(net, max_length, slew_margin, cap_margin); 
 }
 
-void
+bool
 repair_setup(double setup_margin,
              double repair_tns_end_percent,
              int max_passes,
@@ -594,7 +594,7 @@ repair_setup(double setup_margin,
 {
   ensureLinked();
   Resizer *resizer = getResizer();
-  resizer->repairSetup(setup_margin, repair_tns_end_percent,
+  return resizer->repairSetup(setup_margin, repair_tns_end_percent,
                        max_passes, verbose,
                        skip_pin_swap, skip_gate_cloning,
                        skip_buffering, skip_buffer_removal,
@@ -617,7 +617,7 @@ report_swappable_pins_cmd()
   resizer->reportSwappablePins();
 }
 
-void
+bool
 repair_hold(double setup_margin,
             double hold_margin,
             bool allow_setup_violations,
@@ -627,7 +627,7 @@ repair_hold(double setup_margin,
 {
   ensureLinked();
   Resizer *resizer = getResizer();
-  resizer->repairHold(setup_margin, hold_margin,
+  return resizer->repairHold(setup_margin, hold_margin,
                       allow_setup_violations,
                       max_buffer_percent, max_passes,
                       verbose);
@@ -656,12 +656,12 @@ hold_buffer_count()
 }
 
 ////////////////////////////////////////////////////////////////
-void
+bool
 recover_power(float recover_power_percent)
 {
   ensureLinked();
   Resizer *resizer = getResizer();
-  resizer->recoverPower(recover_power_percent);
+  return resizer->recoverPower(recover_power_percent);
 }
 
 ////////////////////////////////////////////////////////////////

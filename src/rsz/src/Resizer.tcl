@@ -608,21 +608,27 @@ proc repair_timing { args } {
   }
   sta::check_argc_eq0 "repair_timing" $args
   rsz::check_parasitics
+
+  set recovered_power 0
+  set repaired_setup 0
+  set repaired_hold 0
   if { $recover_power_percent >= 0 } {
-    rsz::recover_power $recover_power_percent
+    set recovered_power [rsz::recover_power $recover_power_percent]
   } else {
     if { $setup } {
-      rsz::repair_setup $setup_margin $repair_tns_end_percent $max_passes \
+      set repaired_setup [rsz::repair_setup $setup_margin $repair_tns_end_percent $max_passes \
         $verbose \
         $skip_pin_swap $skip_gate_cloning $skip_buffering \
-        $skip_buffer_removal $skip_last_gasp
+        $skip_buffer_removal $skip_last_gasp]
     }
     if { $hold } {
-      rsz::repair_hold $setup_margin $hold_margin \
+      set repaired_hold [rsz::repair_hold $setup_margin $hold_margin \
         $allow_setup_violations $max_buffer_percent $max_passes \
-        $verbose
+        $verbose]
     }
   }
+
+  return [expr $recovered_power || $repaired_setup || $repaired_hold]
 }
 
 ################################################################
