@@ -249,6 +249,11 @@ class Resizer : public dbStaState, public dbNetworkObserver
   double wireClkCapacitance(const Corner* corner) const;
   double wireClkHCapacitance(const Corner* corner) const;
   double wireClkVCapacitance(const Corner* corner) const;
+  void printParasitics();
+  void loadParasitics();
+  std::string getCapNodeName(odb::dbCapNode* node);
+  void writeCouplingCaps(const std::vector<odb::dbCCSeg*>& coupling_caps,
+                         sta::Corner* corner);
   void estimateParasitics(ParasiticsSrc src,
                           std::map<Corner*, std::ostream*>& spef_streams_,
                           const char* ext_model_path);

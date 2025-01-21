@@ -266,6 +266,180 @@ double Resizer::wireClkVCapacitance(const Corner* corner) const
 
 ////////////////////////////////////////////////////////////////
 
+void Resizer::printParasitics()
+{
+  if (block_ == nullptr) {
+    initBlock();
+  }
+  for (sta::Corner* corner : *sta_->corners()) {
+    for (odb::dbNet* db_net : block_->getNets()) {
+      if (db_net->isSpecial()) {
+        continue;
+      }
+
+      logger_->report("\n*D_NET {}", db_net->getName());
+      logger_->report("*CONN");
+      for (auto iterm : db_net->getITerms()) {
+        logger_->report("*I {}", iterm->getName());
+      }
+      for (auto bterm : db_net->getBTerms()) {
+        logger_->report("*P {}", bterm->getName());
+      }
+      logger_->report("*CAP");
+      for (auto cap : db_net->getCapNodes()) {
+        uint node_id = cap->getNode();
+
+        if (cap->isITerm()) {
+          std::string name = getCapNodeName(cap);
+          logger_->report("{} *{} {}",
+                          node_id,
+                          name,
+                          cap->getCapacitance(corner->index()) * 1.0);
+        } else if (cap->isBTerm()) {
+          std::string name = getCapNodeName(cap);
+          logger_->report("{} *{} {}",
+                          node_id,
+                          name,
+                          cap->getCapacitance(corner->index()) * 1.0);
+        }
+      }
+
+      for (auto cap : db_net->getCapNodes()) {
+        uint node_id = cap->getNode();
+        if (!cap->isITerm() && !cap->isBTerm()) {
+          std::string name = getCapNodeName(cap);
+          logger_->report("internal: {} *{} {}",
+                          node_id,
+                          name,
+                          cap->getCapacitance(corner->index()));
+        }
+      }
+
+      std::vector<odb::dbCCSeg*> src_coupling_caps;
+      db_net->getSrcCCSegs(src_coupling_caps);
+      writeCouplingCaps(src_coupling_caps, corner);
+
+      std::vector<odb::dbCCSeg*> tgt_coupling_caps;
+      db_net->getTgtCCSegs(tgt_coupling_caps);
+      writeCouplingCaps(tgt_coupling_caps, corner);
+
+      logger_->report("*RES");
+      for (auto res : db_net->getRSegs()) {
+        std::string src = getCapNodeName(res->getSourceCapNode());
+        std::string dst = getCapNodeName(res->getTargetCapNode());
+        logger_->report("{} *{} *{} {}",
+                        res->getId(),
+                        src,
+                        dst,
+                        res->getResistance(corner->index()));
+      }
+      logger_->report("*END");
+    }
+  }
+}
+
+void Resizer::loadParasitics()
+{
+  if (block_ == nullptr) {
+    initBlock();
+  }
+  for (sta::Corner* corner : *sta_->corners()) {
+    for (odb::dbNet* db_net : block_->getNets()) {
+      if (db_net->isSpecial()) {
+        continue;
+      }
+
+      sta::Net* sta_net = db_network_->dbToSta(db_net);
+
+      sta::ParasiticAnalysisPt* analysis_point
+          = corner->findParasiticAnalysisPt(sta::MinMax::max());
+      sta::Parasitic* parasitic
+          = parasitics_->makeParasiticNetwork(sta_net, false, analysis_point);
+
+      // Load capacitance nodes to STA
+      for (auto cap : db_net->getCapNodes()) {
+        uint node_id = cap->getNode();
+        double cap_value = cap->getCapacitance(corner->index());
+        if (cap->isITerm()) {
+          dbITerm* iterm = dbITerm::getITerm(block_, node_id);
+          sta::Pin* pin = db_network_->dbToSta(iterm);
+          ParasiticNode* node
+              = parasitics_->ensureParasiticNode(parasitic, pin, network_);
+          parasitics_->incrCap(node, cap_value);
+        } else if (cap->isBTerm()) {
+          odb::dbBTerm* bterm = odb::dbBTerm::getBTerm(block_, node_id);
+          sta::Pin* pin = db_network_->dbToSta(bterm);
+          ParasiticNode* node
+              = parasitics_->ensureParasiticNode(parasitic, pin, network_);
+          parasitics_->incrCap(node, cap_value);
+        } else {
+          ParasiticNode* node = parasitics_->ensureParasiticNode(
+              parasitic, sta_net, node_id, network_);
+          parasitics_->incrCap(node, cap_value);
+        }
+      }
+
+      std::vector<odb::dbCCSeg*> src_coupling_caps;
+      db_net->getSrcCCSegs(src_coupling_caps);
+      writeCouplingCaps(src_coupling_caps, corner);
+
+      std::vector<odb::dbCCSeg*> tgt_coupling_caps;
+      db_net->getTgtCCSegs(tgt_coupling_caps);
+      writeCouplingCaps(tgt_coupling_caps, corner);
+
+      // Load resistances to STA
+      size_t resistor_id = 1;
+      for (auto res : db_net->getRSegs()) {
+        double res_value = res->getResistance(corner->index());
+        uint src_node = res->getSourceCapNode()->getNode();
+        uint tgt_node = res->getTargetCapNode()->getNode();
+        ParasiticNode* n1 = parasitics_->ensureParasiticNode(
+            parasitic, sta_net, src_node, network_);
+        ParasiticNode* n2 = parasitics_->ensureParasiticNode(
+            parasitic, sta_net, tgt_node, network_);
+        parasitics_->makeResistor(parasitic, resistor_id++, res_value, n1, n2);
+      }
+      arc_delay_calc_->reduceParasitic(
+          parasitic, sta_net, corner, sta::MinMaxAll::all());
+    }
+  }
+}
+
+std::string Resizer::getCapNodeName(odb::dbCapNode* cap_node)
+{
+  odb::uint node = cap_node->getNode();
+  if (cap_node->isITerm()) {
+    dbITerm* iterm = dbITerm::getITerm(block_, node);
+    return iterm->getName();
+  } else if (cap_node->isBTerm()) {
+    odb::dbBTerm* bterm = odb::dbBTerm::getBTerm(block_, node);
+    return bterm->getName();
+  }
+
+  return cap_node->getNet()->getName() + ":" + std::to_string(node);
+}
+
+void Resizer::writeCouplingCaps(const std::vector<odb::dbCCSeg*>& coupling_caps,
+                                sta::Corner* corner)
+{
+  for (auto cc : coupling_caps) {
+    odb::dbCapNode* src_node = cc->getSourceCapNode();
+    odb::dbCapNode* tgt_node = cc->getTargetCapNode();
+    if (src_node->getNet() == tgt_node->getNet()) {
+      continue;
+    }
+
+    std::string src_name = getCapNodeName(src_node);
+    std::string tgt_name = getCapNodeName(tgt_node);
+
+    logger_->report("cc: {} *{} *{} {}",
+                    cc->getId(),
+                    src_name,
+                    tgt_name,
+                    cc->getCapacitance(corner->index()));
+  }
+}
+
 void Resizer::estimateParasitics(ParasiticsSrc src,
                                  std::map<Corner*, std::ostream*>& spef_streams,
                                  const char* ext_model_path)
@@ -289,6 +463,8 @@ void Resizer::estimateParasitics(ParasiticsSrc src,
     case ParasiticsSrc::detailed_routing:
       openrcx_->extract(ext_options);
       // TODO: load parasitics to STA
+      printParasitics();
+      loadParasitics();
       parasitics_src_ = ParasiticsSrc::detailed_routing;
       break;
     case ParasiticsSrc::none:
