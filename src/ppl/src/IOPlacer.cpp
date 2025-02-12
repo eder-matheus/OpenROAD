@@ -1957,8 +1957,8 @@ Edge IOPlacer::getRegionEdge(const odb::Rect& region)
       return Edge::left;
     }
     return Edge::right;
-  } 
-  
+  }
+
   if (region.yMin() == region.yMax()) {
     if (region.yMin() == die_boundary.yMin()) {
       return Edge::bottom;
