@@ -386,6 +386,11 @@ GridX Grid::gridPaddedWidth(const Cell* cell) const
   return GridX{divCeil(padding_->paddedWidth(cell).v, getSiteWidth().v)};
 }
 
+GridX Grid::gridWidth(const Cell* cell) const
+{
+  return GridX{divCeil(cell->width_.v, getSiteWidth().v)};
+}
+
 GridY Grid::gridHeight(odb::dbMaster* master) const
 {
   Rect bbox;

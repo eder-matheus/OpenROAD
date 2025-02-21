@@ -127,6 +127,7 @@ class Grid
   DbuY gridYToDbu(GridY y) const;
 
   GridX gridPaddedWidth(const Cell* cell) const;
+  GridX gridWidth(const Cell* cell) const;
   GridY gridHeight(const Cell* cell) const;
   GridY gridHeight(odb::dbMaster* master) const;
   DbuY rowHeight(GridY index);
