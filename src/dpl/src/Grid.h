@@ -130,6 +130,8 @@ class Grid
   GridX gridWidth(const Cell* cell) const;
   GridY gridHeight(const Cell* cell) const;
   GridY gridHeight(odb::dbMaster* master) const;
+  GridX gridPadLeftWidth(const Cell* cell) const;
+  GridX gridPadRightWidth(const Cell* cell) const;
   DbuY rowHeight(GridY index);
   void setGridPaddedLoc(Cell* cell, GridX x, GridY y) const;
 

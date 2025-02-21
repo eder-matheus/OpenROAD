@@ -424,6 +424,16 @@ GridY Grid::gridHeight(const Cell* cell) const
   return GridY{static_cast<int>(site->getRowPattern().size())};
 }
 
+GridX Grid::gridPadLeftWidth(const Cell* cell) const
+{
+  return GridX{divCeil(padding_->padLeft(cell).v, getSiteWidth().v)};
+}
+
+GridX Grid::gridPadRightWidth(const Cell* cell) const
+{
+  return GridX{divCeil(padding_->padRight(cell).v, getSiteWidth().v)};
+}
+
 GridX Grid::gridEndX(DbuX x) const
 {
   return GridX{divCeil(x.v, getSiteWidth().v)};

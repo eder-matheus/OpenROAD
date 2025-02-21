@@ -1073,9 +1073,10 @@ bool Opendp::checkPixels(const Cell* cell,
       // if there is no abutting cell, we will then check cells at 1+ distances
       // we only need to check on the left and right sides
 
+      const GridX x_begin_no_padded = x + grid_->gridPadLeftWidth(cell);
       const GridX x_end_no_padded = x + grid_->gridWidth(cell);
 
-      const GridX x_begin = max(GridX{0}, x - 1);
+      const GridX x_begin = max(GridX{0}, x_begin_no_padded - 1);
       const GridY y_begin = max(GridY{0}, y - 1);
       // inclusive search, so we don't add 1 to the end
       const GridX x_finish = min(x_end_no_padded, grid_->getRowSiteCount() - 1);
