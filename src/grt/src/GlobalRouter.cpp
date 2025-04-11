@@ -1182,7 +1182,7 @@ bool GlobalRouter::makeFastrouteNet(Net* net)
   }
 
   if (!on_grid_local) {
-    bool is_non_leaf_clock = (net->getSignalType() == odb::dbSigType::CLOCK && isNonLeafClock(net->getDbNet()));
+    bool is_non_leaf_clock = isNonLeafClock(net->getDbNet());
     std::vector<int>* edge_cost_per_layer;
     int edge_cost_for_net;
     computeTrackConsumption(net, edge_cost_for_net, edge_cost_per_layer);
