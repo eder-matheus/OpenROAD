@@ -136,6 +136,7 @@ class FastRouteCore
   void initBlockedIntervals(std::vector<int>& track_space);
   void initAuxVar();
   NetRouteMap run();
+  NetRouteMap routeNets();
   int totalOverflow() const { return total_overflow_; }
   bool has2Doverflow() const { return has_2D_overflow_; }
   void getBlockage(odb::dbTechLayer* layer,

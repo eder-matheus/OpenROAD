@@ -953,6 +953,40 @@ void FastRouteCore::getCapacityReductionData(
 
 NetRouteMap FastRouteCore::run()
 {
+  std::vector<int> clock_nets;
+  std::vector<int> signal_nets;
+  NetRouteMap routes;
+
+  for(int netID : net_ids_) {
+    if(nets_[netID]->isNonLeafClock()) {
+      clock_nets.push_back(netID);
+    } else {
+      signal_nets.push_back(netID);
+    }
+  }
+
+  // Route Clock Nets
+  if(!clock_nets.empty()) {
+    net_ids_.clear();
+    net_ids_ = std::move(clock_nets);
+    logger_->info(GRT, 16, "Roting non leaf Clock Nets.");
+    routes = routeNets();
+    logger_->info(GRT, 17, "Roting remaining Nets.");
+    initAuxVar();
+  }
+
+  // Route Signal Nets
+  net_ids_.clear();
+  net_ids_ = std::move(signal_nets);
+  NetRouteMap signal_routes = routeNets();
+  // Merge results
+  routes.insert(signal_routes.begin(), signal_routes.end());
+
+  return routes;
+}
+
+NetRouteMap FastRouteCore::routeNets()
+{
   if (netCount() == 0) {
     return getRoutes();
   }
