@@ -232,7 +232,7 @@ void FastRouteCore::addLayerDirection(int layer_idx,
 }
 
 FrNet* FastRouteCore::addNet(odb::dbNet* db_net,
-                             bool is_clock,
+                             bool is_non_leaf_clock,
                              int driver_idx,
                              int cost,
                              int min_layer,
@@ -261,7 +261,7 @@ FrNet* FastRouteCore::addNet(odb::dbNet* db_net,
     gs_.emplace_back();
   }
   net->reset(db_net,
-             is_clock,
+             is_non_leaf_clock,
              driver_idx,
              cost,
              min_layer,
@@ -1596,7 +1596,7 @@ void FrNet::addPin(int x, int y, int layer)
 }
 
 void FrNet::reset(odb::dbNet* db_net,
-                  bool is_clock,
+                  bool is_non_leaf_clock,
                   int driver_idx,
                   int edge_cost,
                   int min_layer,
@@ -1606,7 +1606,7 @@ void FrNet::reset(odb::dbNet* db_net,
 {
   db_net_ = db_net;
   is_critical_ = false;
-  is_clock_ = is_clock;
+  is_non_leaf_clock_ = is_non_leaf_clock;
   driver_idx_ = driver_idx;
   edge_cost_ = edge_cost;
   min_layer_ = min_layer;
