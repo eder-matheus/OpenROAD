@@ -972,7 +972,7 @@ NetRouteMap FastRouteCore::run()
     logger_->info(GRT, 16, "Roting non leaf Clock Nets.");
     routes = routeNets();
     logger_->info(GRT, 17, "Roting remaining Nets.");
-    initAuxVar();
+    //initAuxVar();
   }
 
   // Route Signal Nets
