@@ -965,17 +965,15 @@ NetRouteMap FastRouteCore::run()
     }
   }
 
-  // Route Clock Nets
+  // Route clock nets first
   if(!clock_nets.empty()) {
     net_ids_.clear();
     net_ids_ = std::move(clock_nets);
-    logger_->info(GRT, 16, "Roting non leaf Clock Nets.");
     routes = routeNets();
-    logger_->info(GRT, 17, "Roting remaining Nets.");
     initAuxVar();
   }
 
-  // Route Signal Nets
+  // Route remaining nets
   net_ids_.clear();
   net_ids_ = std::move(signal_nets);
   NetRouteMap signal_routes = routeNets();
