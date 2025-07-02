@@ -812,7 +812,11 @@ void GlobalRouter::removeWireUsage(odb::dbWire* wire)
         odb::dbShape::getViaBoxes(shape, via_boxes);
         for (const odb::dbShape& box : via_boxes) {
           odb::dbTechLayer* tech_layer = box.getTechLayer();
-          if (tech_layer->getRoutingLevel() == 0) {
+          const int layer_routing_level = tech_layer->getRoutingLevel();
+          int min_layer, max_layer;
+          getMinMaxLayer(min_layer, max_layer);
+          if (layer_routing_level == 0 || layer_routing_level < min_layer
+              || layer_routing_level > max_layer) {
             continue;
           }
           odb::Rect via_rect = box.getBox();
@@ -1079,7 +1083,7 @@ void GlobalRouter::initNetlist(std::vector<Net*>& nets)
     getNetLayerRange(net->getDbNet(), min_layer, max_layer);
     odb::dbTechLayer* max_routing_layer
         = db_->getTech()->findRoutingLayer(max_layer);
-    if (pin_count > 1 && !net->isLocal()
+    if (pin_count > 1
         && (!net->hasWires() || net->hasStackedVias(max_routing_layer))) {
       if (pin_count < min_degree) {
         min_degree = pin_count;
@@ -1147,40 +1151,39 @@ void GlobalRouter::makeFastrouteNet(Net* net)
   int root_idx;
   findFastRoutePins(net, pins_on_grid, root_idx);
 
-  if (pins_on_grid.size() > 1) {
-    bool is_non_leaf_clock = isNonLeafClock(net->getDbNet());
-    std::vector<int>* edge_cost_per_layer;
-    int edge_cost_for_net;
-    computeTrackConsumption(net, edge_cost_for_net, edge_cost_per_layer);
+  bool is_non_leaf_clock = isNonLeafClock(net->getDbNet());
+  std::vector<int>* edge_cost_per_layer;
+  int edge_cost_for_net;
+  computeTrackConsumption(net, edge_cost_for_net, edge_cost_per_layer);
 
-    // set layer restriction only to clock nets that are not connected to
-    // leaf iterms
-    int min_layer, max_layer;
-    getNetLayerRange(net->getDbNet(), min_layer, max_layer);
+  // set layer restriction only to clock nets that are not connected to
+  // leaf iterms
+  int min_layer, max_layer;
+  getNetLayerRange(net->getDbNet(), min_layer, max_layer);
 
-    FrNet* fr_net = fastroute_->addNet(net->getDbNet(),
-                                       is_non_leaf_clock,
-                                       root_idx,
-                                       edge_cost_for_net,
-                                       min_layer - 1,
-                                       max_layer - 1,
-                                       net->getSlack(),
-                                       edge_cost_per_layer);
-    // TODO: improve net layer range with more dynamic layer restrictions
-    // when there's no room in the specified range
-    // See https://github.com/The-OpenROAD-Project/OpenROAD/pull/2893 and
-    // https://github.com/The-OpenROAD-Project/OpenROAD/discussions/2870
-    // for a detailed discussion
+  FrNet* fr_net = fastroute_->addNet(net->getDbNet(),
+                                     is_non_leaf_clock,
+                                     net->isLocal(),
+                                     root_idx,
+                                     edge_cost_for_net,
+                                     min_layer - 1,
+                                     max_layer - 1,
+                                     net->getSlack(),
+                                     edge_cost_per_layer);
+  // TODO: improve net layer range with more dynamic layer restrictions
+  // when there's no room in the specified range
+  // See https://github.com/The-OpenROAD-Project/OpenROAD/pull/2893 and
+  // https://github.com/The-OpenROAD-Project/OpenROAD/discussions/2870
+  // for a detailed discussion
 
-    for (RoutePt& pin_pos : pins_on_grid) {
-      fr_net->addPin(pin_pos.x(), pin_pos.y(), pin_pos.layer() - 1);
-    }
+  for (RoutePt& pin_pos : pins_on_grid) {
+    fr_net->addPin(pin_pos.x(), pin_pos.y(), pin_pos.layer() - 1);
+  }
 
-    // Save stt input on debug file
-    if (fastroute_->hasSaveSttInput()
-        && net->getDbNet() == fastroute_->getDebugNet()) {
-      saveSttInputFile(net);
-    }
+  // Save stt input on debug file
+  if (fastroute_->hasSaveSttInput()
+      && net->getDbNet() == fastroute_->getDebugNet()) {
+    saveSttInputFile(net);
   }
 }
 
@@ -2755,9 +2758,6 @@ bool GlobalRouter::isConnected(odb::dbNet* net)
     initialized_groups++;
 
     for (int j = i - 1; j >= 0 && initialized_groups > 1; --j) {
-      if (find(parent[i]) == find(parent[j])) {
-        continue;
-      }
       if (segmentsConnect(routes_[net][i], routes_[net][j])) {
         uniteGroups(i, j);
         initialized_groups--;
@@ -3061,9 +3061,12 @@ void GlobalRouter::mergeSegments(const std::vector<Pin>& pins, GRoute& route)
 
     // both segments are not vias
     if (segment0.init_layer == segment0.final_layer
-        && segment1.init_layer == segment1.final_layer &&
+        && segment1.init_layer == segment1.final_layer
         // segments are on the same layer
-        segment0.init_layer == segment1.init_layer) {
+        && segment0.init_layer == segment1.init_layer
+        // prevent merging guides below the min routing layer (guides for pin
+        // access)
+        && segment0.init_layer >= getMinRoutingLayer()) {
       // if segment 0 connects to the end of segment 1
       if (!segmentsConnect(segment0, segment1, segment1, segs_at_point)) {
         segments[write++] = segment0;
@@ -4229,10 +4232,7 @@ void GlobalRouter::mergeNetsRouting(odb::dbNet* db_net1, odb::dbNet* db_net2)
   Net* net1 = db_net_map_[db_net1];
   Net* net2 = db_net_map_[db_net2];
   // Do not merge the routing if the survivor net is already dirty.
-  // Also, do not merge if the survivor net is a local net, since it doesn't
-  // have routes inside FastRouteCore.
-  // TODO: properly handle local nets when merging global routes.
-  if (!net1->isDirtyNet() && !net1->isLocal()) {
+  if (!net1->isDirtyNet()) {
     connectRouting(db_net1, db_net2);
     net1->setIsMergedNet(true);
     net1->setMergedNet(db_net2);
@@ -4327,20 +4327,27 @@ std::vector<GSegment> GlobalRouter::createConnectionForPositions(
     auto [y1, y2] = std::minmax({pin_pos1.getY(), pin_pos2.getY()});
     if ((vertical && dir != odb::dbTechLayerDir::VERTICAL)
         || (horizontal && dir != odb::dbTechLayerDir::HORIZONTAL)) {
-      conn_layer--;
+      if (conn_layer > getMinRoutingLayer()) {
+        conn_layer--;
+      } else {
+        conn_layer++;
+      }
     }
     connection.emplace_back(x1, y1, conn_layer, x2, y2, conn_layer);
   } else {
-    int layer_hor
-        = dir == odb::dbTechLayerDir::HORIZONTAL ? conn_layer : conn_layer - 1;
-    int layer_ver
-        = dir == odb::dbTechLayerDir::VERTICAL ? conn_layer : conn_layer - 1;
+    const int layer_fix = conn_layer <= getMinRoutingLayer() ? 1 : -1;
+    const int layer_hor = dir == odb::dbTechLayerDir::HORIZONTAL
+                              ? conn_layer
+                              : conn_layer + layer_fix;
+    const int layer_ver = dir == odb::dbTechLayerDir::VERTICAL
+                              ? conn_layer
+                              : conn_layer + layer_fix;
     int x1 = pin_pos1.getX();
     int y1 = pin_pos1.getY();
     int x2 = pin_pos2.getX();
     int y2 = pin_pos2.getY();
     connection.emplace_back(x1, y1, layer_hor, x2, y1, layer_hor);
-    connection.emplace_back(x2, y1, conn_layer - 1, x2, y1, conn_layer);
+    connection.emplace_back(x2, y1, conn_layer + layer_fix, x2, y1, conn_layer);
     connection.emplace_back(x2, y1, layer_ver, x2, y2, layer_ver);
   }
 
@@ -4829,15 +4836,17 @@ std::vector<Net*> GlobalRouter::updateDirtyRoutes(bool save_guides)
 {
   std::vector<Net*> dirty_nets;
   if (!dirty_nets_.empty()) {
+    fastroute_->setVerbose(false);
+    fastroute_->clearNetsToRoute();
+
+    updateDirtyNets(dirty_nets);
+
     std::vector<odb::dbNet*> modified_nets;
     modified_nets.reserve(dirty_nets.size());
     for (const Net* net : dirty_nets) {
       modified_nets.push_back(net->getDbNet());
     }
-    fastroute_->setVerbose(false);
-    fastroute_->clearNetsToRoute();
 
-    updateDirtyNets(dirty_nets);
     if (verbose_) {
       logger_->info(GRT, 9, "rerouting {} nets.", dirty_nets.size());
     }

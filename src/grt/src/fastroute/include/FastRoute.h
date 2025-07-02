@@ -100,7 +100,8 @@ class FastRouteCore
   void setTileSize(int size);
   void addLayerDirection(int layer_idx, const odb::dbTechLayerDir& direction);
   FrNet* addNet(odb::dbNet* db_net,
-                bool is_clock,
+                bool is_non_leaf_clock,
+                bool is_local,
                 int driver_idx,
                 int cost,
                 int min_layer,
