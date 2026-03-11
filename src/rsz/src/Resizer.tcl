@@ -779,6 +779,14 @@ proc report_buffers { args } {
   rsz::report_buffers_cmd $filtered
 }
 
+sta::define_cmd_args "report_multi_output_cell_iterms" {}
+
+proc report_multi_output_cell_iterms { args } {
+  sta::parse_key_args "report_multi_output_cell_iterms" args keys {} flags {}
+  sta::check_argc_eq0 "report_multi_output_cell_iterms" $args
+  rsz::report_multi_output_cell_iterms_cmd
+}
+
 sta::define_cmd_args "insert_buffer" { -buffer_cell lib_cell \
                                        [-net net] \
                                        [-load_pins list_of_pins] \

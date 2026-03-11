@@ -6202,4 +6202,24 @@ bool Resizer::estimateSlewsInTree(
   return true;
 }
 
+void Resizer::reportMultiOutputCellITerms()
+{
+  logger_->report("Instances with multiple output ITerms:");
+  int instances_cnt = 0;
+  for (odb::dbInst* inst : block_->getInsts()) {
+    int output_count = 0;
+    for (odb::dbITerm* iterm : inst->getITerms()) {
+      odb::dbIoType io_type = iterm->getMTerm()->getIoType();
+      if (io_type == odb::dbIoType::OUTPUT || io_type == odb::dbIoType::INOUT) {
+        output_count++;
+      }
+    }
+    if (output_count > 1) {
+      logger_->report("{}", inst->getName());
+      instances_cnt++;
+    }
+  }
+  logger_->report("Found {} instances with multiple output ITerms", instances_cnt);
+}
+
 }  // namespace rsz
