@@ -826,7 +826,6 @@ void check_slew_after_buffer_rm(Pin *drvr_pin, Instance *buffer_instance, const 
 void
 report_multi_output_cell_iterms_cmd()
 {
-  ensureLinked();
   Resizer *resizer = getResizer();
   resizer->reportMultiOutputCellITerms();
 }
