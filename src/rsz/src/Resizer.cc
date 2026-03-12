@@ -6210,6 +6210,11 @@ void Resizer::reportMultiOutputCellITerms()
     for (odb::dbMaster* master : lib->getMasters()) {
       int output_count = 0;
       for (odb::dbMTerm* mterm : master->getMTerms()) {
+        odb::dbSigType sig_type = mterm->getSigType();
+        if (sig_type == odb::dbSigType::POWER
+            || sig_type == odb::dbSigType::GROUND) {
+          continue;
+        }
         odb::dbIoType io_type = mterm->getIoType();
         if (io_type == odb::dbIoType::OUTPUT || io_type == odb::dbIoType::INOUT) {
           output_count++;
