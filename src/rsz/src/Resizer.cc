@@ -351,6 +351,17 @@ void Resizer::initBlock()
   }
 }
 
+void Resizer::copyState(const sta::StaState* sta)
+{
+  sta::Graph* old_graph = graph_;
+  dbStaState::copyState(sta);
+  if (graph_ != old_graph) {
+    // Graph was rebuilt (e.g. after clearNonSdc).  Invalidate cached
+    // vertex pointers so they are re-collected from the new graph.
+    invalidateVertexOrdering();
+  }
+}
+
 void Resizer::init()
 {
   initDesignArea();
