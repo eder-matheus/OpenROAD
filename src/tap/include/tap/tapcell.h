@@ -125,12 +125,13 @@ class Tapcell
     InnerBottomRight,
     Unknown
   };
+  // Fix D: initialize all members to avoid undefined behavior
   struct PartialOverlap
   {
     bool left = false;
-    int x_start_left;
+    int x_start_left = 0;
     bool right = false;
-    int x_limit_right;
+    int x_limit_right = 0;
   };
   struct Corner
   {
@@ -192,6 +193,19 @@ class Tapcell
 
   std::string toString(EdgeType type) const;
   std::string toString(CornerType type) const;
+
+  // Dup A: flip helpers for inner/outer boundary classification
+  EdgeType flipEdgeType(EdgeType type) const;
+  CornerType flipCornerType(CornerType type) const;
+
+  // Refactor C: extract site from any non-null master in options
+  odb::dbSite* getSiteFromEndcapOptions(
+      const EndcapCellOptions& options) const;
+
+  // Refactor B: select corner master based on corner type and orientation
+  odb::dbMaster* getCornerMaster(const Corner& corner,
+                                 const odb::dbOrientType& row_orient,
+                                 const EndcapCellOptions& options) const;
 
   odb::dbRow* getRow(const Corner& corner, odb::dbSite* site) const;
   std::vector<odb::dbRow*> getRows(const Edge& edge, odb::dbSite* site) const;

@@ -24,8 +24,8 @@
 
 namespace tap {
 
-using std::string;
-using std::vector;
+// Style A: removed "using std::string/vector" — use qualified names
+// to match the style of other OpenROAD modules (pdn, pad, etc.)
 
 Tapcell::Tapcell(odb::dbDatabase* db, utl::Logger* logger)
     : db_(db), logger_(logger)
@@ -42,12 +42,12 @@ void Tapcell::reset()
 
 //---------------------------------------------------------------
 
-void Tapcell::setTapPrefix(const string& tap_prefix)
+void Tapcell::setTapPrefix(const std::string& tap_prefix)
 {
   tap_prefix_ = tap_prefix;
 }
 
-void Tapcell::setEndcapPrefix(const string& endcap_prefix)
+void Tapcell::setEndcapPrefix(const std::string& endcap_prefix)
 {
   endcap_prefix_ = endcap_prefix;
 }
@@ -63,14 +63,15 @@ void Tapcell::clear()
 
 int Tapcell::defaultDistance() const
 {
-  odb::dbBlock* block = db_->getChip()->getBlock();
+  odb::dbBlock* block = getBlock();
   return 2 * block->getDbUnitsPerMicron();
 }
 
 void Tapcell::cutRows(const Options& options)
 {
-  vector<odb::dbBox*> blockages = findBlockages();
-  odb::dbBlock* block = db_->getChip()->getBlock();
+  std::vector<odb::dbBox*> blockages = findBlockages();
+  // Style B: use getBlock() helper throughout
+  odb::dbBlock* block = getBlock();
   const int halo_x = options.halo_x >= 0 ? options.halo_x : defaultDistance();
   const int halo_y = options.halo_y >= 0 ? options.halo_y : defaultDistance();
   int min_row_width = (options.endcap_master != nullptr)
@@ -129,7 +130,7 @@ int Tapcell::placeTapcells(odb::dbMaster* tapcell_master, const int dist)
   }
 
   std::vector<odb::dbInst*> fixed_insts;
-  for (auto* inst : db_->getChip()->getBlock()->getInsts()) {
+  for (auto* inst : getBlock()->getInsts()) {
     if (inst->isFixed() && !inst->getMaster()->isCover()) {
       fixed_insts.push_back(inst);
     }
@@ -137,7 +138,7 @@ int Tapcell::placeTapcells(odb::dbMaster* tapcell_master, const int dist)
   InstTree instancetree(fixed_insts.begin(), fixed_insts.end());
 
   int inst = 0;
-  for (auto* row : db_->getChip()->getBlock()->getRows()) {
+  for (auto* row : getBlock()->getRows()) {
     const bool is_edge = edge_rows.find(row) != edge_rows.end();
     inst += placeTapcells(tapcell_master,
                           dist,
@@ -207,7 +208,7 @@ int Tapcell::placeTapcells(odb::dbMaster* tapcell_master,
     if (x_loc) {
       const int lly = row_bb.yMin();
       auto* inst = makeInstance(
-          db_->getChip()->getBlock(),
+          getBlock(),
           tapcell_master,
           ori,
           *x_loc,
@@ -311,10 +312,10 @@ bool Tapcell::isOverlapping(const int x,
   return false;
 }
 
-vector<odb::dbBox*> Tapcell::findBlockages()
+std::vector<odb::dbBox*> Tapcell::findBlockages()
 {
-  vector<odb::dbBox*> blockages;
-  for (auto&& inst : db_->getChip()->getBlock()->getInsts()) {
+  std::vector<odb::dbBox*> blockages;
+  for (auto&& inst : getBlock()->getInsts()) {
     if (inst->isBlock()) {
       if (!inst->isPlaced()) {
         logger_->warn(utl::TAP, 32, "Macro {} is not placed.", inst->getName());
@@ -332,12 +333,12 @@ odb::dbInst* Tapcell::makeInstance(odb::dbBlock* block,
                                    const odb::dbOrientType& orientation,
                                    int x,
                                    int y,
-                                   const string& prefix)
+                                   const std::string& prefix)
 {
   if (x < 0 || y < 0) {
     return nullptr;
   }
-  const string name = prefix + std::to_string(phy_idx_);
+  const std::string name = prefix + std::to_string(phy_idx_);
   odb::dbInst* inst = odb::dbInst::create(block,
                                           master,
                                           name.c_str(),
@@ -370,7 +371,7 @@ odb::dbInst* Tapcell::makeInstance(odb::dbBlock* block,
 
 int Tapcell::removeCells(const std::string& prefix)
 {
-  odb::dbBlock* block = db_->getChip()->getBlock();
+  odb::dbBlock* block = getBlock();
   int removed = 0;
 
   if (prefix.empty()) {
@@ -378,11 +379,17 @@ int Tapcell::removeCells(const std::string& prefix)
     return 0;
   }
 
+  // Bug C: collect first, then destroy — calling destroy() during
+  // range-for over getInsts() is not the sanctioned odb iteration pattern.
+  std::vector<odb::dbInst*> to_remove;
   for (odb::dbInst* inst : block->getInsts()) {
     if (inst->getName().starts_with(prefix)) {
-      odb::dbInst::destroy(inst);
-      removed++;
+      to_remove.push_back(inst);
     }
+  }
+  for (odb::dbInst* inst : to_remove) {
+    odb::dbInst::destroy(inst);
+    removed++;
   }
 
   return removed;
@@ -427,13 +434,13 @@ std::vector<Tapcell::Polygon90> Tapcell::getBoundaryAreas() const
   };
 
   const Polygon90 core_area
-      = rect_to_poly(db_->getChip()->getBlock()->getCoreArea());
+      = rect_to_poly(getBlock()->getCoreArea());
 
   // Generate mask of areas without rows
   Polygon90Set core_mask;
   core_mask += core_area;
 
-  for (odb::dbRow* row : db_->getChip()->getBlock()->getRows()) {
+  for (odb::dbRow* row : getBlock()->getRows()) {
     if (row->getSite()->getClass() == odb::dbSiteClass::PAD) {
       continue;
     }
@@ -512,6 +519,7 @@ void Tapcell::placeEndcaps(const EndcapCellOptions& options)
       const auto& [added_corners, added_endcaps]
           = placeEndcaps(*itr, false, filled_options);
       corners += added_corners;
+      endcaps += added_endcaps;  // Bug A: was missing — undercounted for holes
     }
   }
 
@@ -590,23 +598,9 @@ std::vector<Tapcell::Edge> Tapcell::getBoundaryEdges(const Polygon90& area,
       curr->type = EdgeType::Bottom;
     }
 
+    // Dup A: use flipEdgeType helper instead of inline switch
     if (!outer) {
-      switch (curr->type) {
-        case EdgeType::Bottom:
-          curr->type = EdgeType::Top;
-          break;
-        case EdgeType::Right:
-          curr->type = EdgeType::Left;
-          break;
-        case EdgeType::Top:
-          curr->type = EdgeType::Bottom;
-          break;
-        case EdgeType::Left:
-          curr->type = EdgeType::Right;
-          break;
-        case EdgeType::Unknown:
-          break;
-      }
+      curr->type = flipEdgeType(curr->type);
     }
     debugPrint(logger_,
                utl::TAP,
@@ -672,35 +666,9 @@ std::vector<Tapcell::Corner> Tapcell::getBoundaryCorners(const Polygon90& area,
       curr->type = CornerType::InnerTopLeft;
     }
 
+    // Dup A: use flipCornerType helper instead of inline switch
     if (!outer) {
-      switch (curr->type) {
-        case CornerType::InnerBottomLeft:
-          curr->type = CornerType::OuterBottomLeft;
-          break;
-        case CornerType::InnerBottomRight:
-          curr->type = CornerType::OuterBottomRight;
-          break;
-        case CornerType::InnerTopLeft:
-          curr->type = CornerType::OuterTopLeft;
-          break;
-        case CornerType::InnerTopRight:
-          curr->type = CornerType::OuterTopRight;
-          break;
-        case CornerType::OuterBottomLeft:
-          curr->type = CornerType::InnerBottomLeft;
-          break;
-        case CornerType::OuterBottomRight:
-          curr->type = CornerType::InnerBottomRight;
-          break;
-        case CornerType::OuterTopLeft:
-          curr->type = CornerType::InnerTopLeft;
-          break;
-        case CornerType::OuterTopRight:
-          curr->type = CornerType::InnerTopRight;
-          break;
-        case CornerType::Unknown:
-          break;
-      }
+      curr->type = flipCornerType(curr->type);
     }
 
     debugPrint(logger_,
@@ -760,6 +728,110 @@ std::string Tapcell::toString(Tapcell::CornerType type) const
   return "";
 }
 
+// Dup A: flip helpers for inner/outer boundary classification
+Tapcell::EdgeType Tapcell::flipEdgeType(EdgeType type) const
+{
+  switch (type) {
+    case EdgeType::Bottom:
+      return EdgeType::Top;
+    case EdgeType::Top:
+      return EdgeType::Bottom;
+    case EdgeType::Left:
+      return EdgeType::Right;
+    case EdgeType::Right:
+      return EdgeType::Left;
+    case EdgeType::Unknown:
+      return EdgeType::Unknown;
+  }
+  return EdgeType::Unknown;
+}
+
+Tapcell::CornerType Tapcell::flipCornerType(CornerType type) const
+{
+  switch (type) {
+    case CornerType::InnerBottomLeft:
+      return CornerType::OuterBottomLeft;
+    case CornerType::InnerBottomRight:
+      return CornerType::OuterBottomRight;
+    case CornerType::InnerTopLeft:
+      return CornerType::OuterTopLeft;
+    case CornerType::InnerTopRight:
+      return CornerType::OuterTopRight;
+    case CornerType::OuterBottomLeft:
+      return CornerType::InnerBottomLeft;
+    case CornerType::OuterBottomRight:
+      return CornerType::InnerBottomRight;
+    case CornerType::OuterTopLeft:
+      return CornerType::InnerTopLeft;
+    case CornerType::OuterTopRight:
+      return CornerType::InnerTopRight;
+    case CornerType::Unknown:
+      return CornerType::Unknown;
+  }
+  return CornerType::Unknown;
+}
+
+// Refactor C: extract site from any non-null master in endcap options
+odb::dbSite* Tapcell::getSiteFromEndcapOptions(
+    const EndcapCellOptions& options) const
+{
+  for (auto* master : {options.left_bottom_corner,
+                       options.right_bottom_corner,
+                       options.left_top_corner,
+                       options.right_top_corner,
+                       options.left_bottom_edge,
+                       options.right_bottom_edge,
+                       options.left_top_edge,
+                       options.right_top_edge,
+                       options.left_edge,
+                       options.right_edge}) {
+    if (master != nullptr) {
+      return master->getSite();
+    }
+  }
+  for (auto* master : options.top_edge) {
+    if (master != nullptr) {
+      return master->getSite();
+    }
+  }
+  for (auto* master : options.bottom_edge) {
+    if (master != nullptr) {
+      return master->getSite();
+    }
+  }
+  return nullptr;
+}
+
+// Refactor B: select corner master based on corner type and row orientation
+odb::dbMaster* Tapcell::getCornerMaster(
+    const Corner& corner,
+    const odb::dbOrientType& row_orient,
+    const EndcapCellOptions& options) const
+{
+  const bool is_r0 = (row_orient == odb::dbOrientType::R0);
+  switch (corner.type) {
+    case CornerType::OuterBottomLeft:
+      return is_r0 ? options.left_bottom_corner : options.left_top_corner;
+    case CornerType::OuterBottomRight:
+      return is_r0 ? options.right_bottom_corner : options.right_top_corner;
+    case CornerType::OuterTopLeft:
+      return is_r0 ? options.left_top_corner : options.left_bottom_corner;
+    case CornerType::OuterTopRight:
+      return is_r0 ? options.right_top_corner : options.right_bottom_corner;
+    case CornerType::InnerBottomLeft:
+      return is_r0 ? options.left_bottom_edge : options.left_top_edge;
+    case CornerType::InnerBottomRight:
+      return is_r0 ? options.right_bottom_edge : options.right_top_edge;
+    case CornerType::InnerTopLeft:
+      return is_r0 ? options.left_top_edge : options.left_bottom_edge;
+    case CornerType::InnerTopRight:
+      return is_r0 ? options.right_top_edge : options.right_bottom_edge;
+    case CornerType::Unknown:
+      return nullptr;
+  }
+  return nullptr;
+}
+
 std::vector<odb::dbRow*> Tapcell::getRows(const Tapcell::Edge& edge,
                                           odb::dbSite* site) const
 {
@@ -771,7 +843,7 @@ std::vector<odb::dbRow*> Tapcell::getRows(const Tapcell::Edge& edge,
 
   const odb::Rect search(edge.pt0, edge.pt1);
 
-  for (odb::dbRow* row : db_->getChip()->getBlock()->getRows()) {
+  for (odb::dbRow* row : getBlock()->getRows()) {
     if (row->getSite()->getName() != site->getName()) {
       continue;
     }
@@ -809,7 +881,7 @@ odb::dbRow* Tapcell::getRow(const Tapcell::Corner& corner,
 
   const odb::Rect search(corner.pt, corner.pt);
 
-  for (odb::dbRow* row : db_->getChip()->getBlock()->getRows()) {
+  for (odb::dbRow* row : getBlock()->getRows()) {
     if (row->getSite()->getName() != site->getName()) {
       continue;
     }
@@ -894,91 +966,16 @@ std::pair<int, int> Tapcell::placeEndcaps(const Tapcell::Polygon90& area,
 Tapcell::CornerMap Tapcell::placeEndcapCorner(const Tapcell::Corner& corner,
                                               const EndcapCellOptions& options)
 {
-  odb::dbSite* site = nullptr;
-  if (options.left_bottom_corner != nullptr) {
-    site = options.left_bottom_corner->getSite();
-  } else if (options.right_bottom_corner != nullptr) {
-    site = options.right_bottom_corner->getSite();
-  } else if (options.left_top_corner != nullptr) {
-    site = options.left_top_corner->getSite();
-  } else if (options.right_top_corner != nullptr) {
-    site = options.right_top_corner->getSite();
-  } else if (options.left_bottom_edge != nullptr) {
-    site = options.left_bottom_edge->getSite();
-  } else if (options.right_bottom_edge != nullptr) {
-    site = options.right_bottom_edge->getSite();
-  } else if (options.left_top_edge != nullptr) {
-    site = options.left_top_edge->getSite();
-  } else if (options.right_top_edge != nullptr) {
-    site = options.right_top_edge->getSite();
-  }
+  // Refactor C: use shared site extraction helper
+  odb::dbSite* site = getSiteFromEndcapOptions(options);
   odb::dbRow* row = getRow(corner, site);
   if (row == nullptr) {
     return {};
   }
 
-  odb::dbMaster* master = nullptr;
+  // Refactor B: use getCornerMaster helper
   const auto row_orient = row->getOrient();
-  switch (corner.type) {
-    case CornerType::OuterBottomLeft:
-      if (row_orient == odb::dbOrientType::R0) {
-        master = options.left_bottom_corner;
-      } else {
-        master = options.left_top_corner;
-      }
-      break;
-    case CornerType::OuterBottomRight:
-      if (row_orient == odb::dbOrientType::R0) {
-        master = options.right_bottom_corner;
-      } else {
-        master = options.right_top_corner;
-      }
-      break;
-    case CornerType::OuterTopLeft:
-      if (row_orient == odb::dbOrientType::R0) {
-        master = options.left_top_corner;
-      } else {
-        master = options.left_bottom_corner;
-      }
-      break;
-    case CornerType::OuterTopRight:
-      if (row_orient == odb::dbOrientType::R0) {
-        master = options.right_top_corner;
-      } else {
-        master = options.right_bottom_corner;
-      }
-      break;
-    case CornerType::InnerBottomLeft:
-      if (row_orient == odb::dbOrientType::R0) {
-        master = options.left_bottom_edge;
-      } else {
-        master = options.left_top_edge;
-      }
-      break;
-    case CornerType::InnerBottomRight:
-      if (row_orient == odb::dbOrientType::R0) {
-        master = options.right_bottom_edge;
-      } else {
-        master = options.right_top_edge;
-      }
-      break;
-    case CornerType::InnerTopLeft:
-      if (row_orient == odb::dbOrientType::R0) {
-        master = options.left_top_edge;
-      } else {
-        master = options.left_bottom_edge;
-      }
-      break;
-    case CornerType::InnerTopRight:
-      if (row_orient == odb::dbOrientType::R0) {
-        master = options.right_top_edge;
-      } else {
-        master = options.right_bottom_edge;
-      }
-      break;
-    case CornerType::Unknown:
-      break;
-  }
+  odb::dbMaster* master = getCornerMaster(corner, row_orient, options);
 
   debugPrint(
       logger_,
@@ -1047,7 +1044,7 @@ Tapcell::CornerMap Tapcell::placeEndcapCorner(const Tapcell::Corner& corner,
     return {};
   }
 
-  auto inst = makeInstance(db_->getChip()->getBlock(),
+  auto inst = makeInstance(getBlock(),
                            master,
                            orient,
                            ll.getX(),
@@ -1068,14 +1065,13 @@ int Tapcell::placeEndcapEdge(const Tapcell::Edge& edge,
                              const EndcapCellOptions& options)
 {
   switch (edge.type) {
+    // Bug E: removed unreachable break statements after return
     case EdgeType::Bottom:
     case EdgeType::Top:
       return placeEndcapEdgeHorizontal(edge, corners, options);
-      break;
     case EdgeType::Left:
     case EdgeType::Right:
       return placeEndcapEdgeVertical(edge, corners, options);
-      break;
     case EdgeType::Unknown:
       break;
   }
@@ -1089,17 +1085,9 @@ int Tapcell::placeEndcapEdgeHorizontal(const Tapcell::Edge& edge,
 {
   int insts = 0;
 
-  odb::dbSite* site = nullptr;
-  if (site == nullptr) {
-    for (auto* master : options.top_edge) {
-      site = master->getSite();
-    }
-  }
-  if (site == nullptr) {
-    for (auto* master : options.bottom_edge) {
-      site = master->getSite();
-    }
-  }
+  // Bug B: was always-true dead condition + loop kept only last master's site.
+  // Now uses shared helper to extract site from any non-null master.
+  odb::dbSite* site = getSiteFromEndcapOptions(options);
   auto rows = getRows(edge, site);
   if (rows.empty()) {
     return 0;
@@ -1208,7 +1196,7 @@ int Tapcell::placeEndcapEdgeHorizontal(const Tapcell::Edge& edge,
           e1.getX() / dbus);
     }
 
-    makeInstance(db_->getChip()->getBlock(),
+    makeInstance(getBlock(),
                  master,
                  row->getOrient(),
                  ll.getX(),
@@ -1322,7 +1310,7 @@ int Tapcell::placeEndcapEdgeVertical(const Tapcell::Edge& edge,
       continue;
     }
 
-    makeInstance(db_->getChip()->getBlock(),
+    makeInstance(getBlock(),
                  edge_master,
                  orient,
                  ll.getX(),
