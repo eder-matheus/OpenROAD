@@ -92,6 +92,8 @@ entries:
       title: Calibration
   - file: main/src/ram/README
     title: RAM Generator
+  - file: user/LibertyDatabase.md
+    title: Liberty Database (LDB)
   - file: user/MessagesFinal.md
     title: Messages Glossary
 
