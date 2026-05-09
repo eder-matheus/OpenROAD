@@ -138,7 +138,7 @@ void CUGR::updateOverflowNets(std::vector<int>& net_indices)
       net_indices.push_back(net->getIndex());
     }
   }
-  logger_->report("Nets with overflow: {}.", net_indices.size());
+  logger_->report("Nets with congestion: {}.", net_indices.size());
 }
 
 void CUGR::patternRoute(std::vector<int>& net_indices)
@@ -554,7 +554,7 @@ void CUGR::printStatistics() const
   logger_->report("Wire length:           {}",
                   wire_length / grid_graph_->getM2Pitch());
   logger_->report("Total via count:       {}", via_count);
-  logger_->report("Total overflow:        {}", (int) total_overflow);
+  logger_->report("Total congestion:      {}", (int) total_overflow);
   logger_->report("Min resource:          {}", min_resource);
   logger_->report("Bottleneck:            {}", bottleneck);
 }
@@ -897,7 +897,7 @@ void CUGR::saveCongestion()
       marker->addShape(cell_box(x, y));
       marker->setComment("capacity:" + std::to_string(cap)
                          + " usage:" + std::to_string(use)
-                         + " overflow:" + std::to_string(use - cap));
+                         + " congestion:" + std::to_string(use - cap));
       auto it = nets_by_cell.find({x, y});
       if (it != nets_by_cell.end()) {
         for (odb::dbNet* net : it->second) {
