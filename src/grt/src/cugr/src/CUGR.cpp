@@ -526,8 +526,7 @@ void CUGR::printStatistics() const
 
   // Overflow is computed from edge.demand (which includes via-stub
   // demand). This is the metric CUGR's own checkOverflow,
-  // updateOverflowNets, and extractCongestionView use, and it agrees
-  // with Min resource below and with the GRT-0096 table.
+  // updateOverflowNets, and extractCongestionView use
   CapacityT total_overflow = 0;
   CapacityT min_resource = std::numeric_limits<CapacityT>::max();
   GRPoint bottleneck(-1, -1, -1);
@@ -592,17 +591,17 @@ void CUGR::updateDbCongestion()
     const int direction = grid_graph_->getLayerDirection(layer);
     if (direction == MetalLayer::H) {
       for (int y = 0; y < y_size; y++) {
-        float last_cap = 0;
-        float last_use = 0;
+        double last_cap = 0;
+        double last_use = 0;
         for (int x = 0; x < x_size; x++) {
-          float cap, use;
+          double cap, use;
           if (x == x_size - 1) {
             cap = last_cap;
             use = last_use;
           } else {
             const GraphEdge& edge = grid_graph_->getEdge(layer, x, y);
-            const float initial = grid_graph_->getInitialEdgeCapacity(
-                layer, x, y);
+            const double initial
+                = grid_graph_->getInitialEdgeCapacity(layer, x, y);
             cap = initial;
             use = edge.demand + (initial - edge.capacity);
           }
@@ -614,17 +613,17 @@ void CUGR::updateDbCongestion()
       }
     } else {
       for (int x = 0; x < x_size; x++) {
-        float last_cap = 0;
-        float last_use = 0;
+        double last_cap = 0;
+        double last_use = 0;
         for (int y = 0; y < y_size; y++) {
-          float cap, use;
+          double cap, use;
           if (y == y_size - 1) {
             cap = last_cap;
             use = last_use;
           } else {
             const GraphEdge& edge = grid_graph_->getEdge(layer, x, y);
-            const float initial = grid_graph_->getInitialEdgeCapacity(
-                layer, x, y);
+            const double initial
+                = grid_graph_->getInitialEdgeCapacity(layer, x, y);
             cap = initial;
             use = edge.demand + (initial - edge.capacity);
           }
@@ -813,6 +812,10 @@ void CUGR::saveCongestion()
   }
 
   // Identify congested tiles per direction.
+  if (totalOverflow() == 0) {
+    return;
+  }
+
   std::vector<std::tuple<int, int, int, int>> congested_h;  // x, y, cap, use
   std::vector<std::tuple<int, int, int, int>> congested_v;
   for (int x = 0; x + 1 < x_size; x++) {
@@ -843,14 +846,12 @@ void CUGR::saveCongestion()
     }
     odb::dbNet* db_net = gr_net->getDbNet();
     GRTreeNode::preorder(
-        gr_net->getRoutingTree(),
-        [&](const std::shared_ptr<GRTreeNode>& node) {
+        gr_net->getRoutingTree(), [&](const std::shared_ptr<GRTreeNode>& node) {
           for (const auto& child : node->getChildren()) {
             if (node->getLayerIdx() != child->getLayerIdx()) {
               continue;
             }
-            const int dir
-                = grid_graph_->getLayerDirection(node->getLayerIdx());
+            const int dir = grid_graph_->getLayerDirection(node->getLayerIdx());
             if (dir == MetalLayer::H) {
               const int y = node->y();
               const auto [lx, hx] = std::minmax({node->x(), child->x()});
@@ -882,8 +883,8 @@ void CUGR::saveCongestion()
 
   auto emit = [&](const char* category_name,
                   const std::vector<std::tuple<int, int, int, int>>& cells,
-                  const std::map<std::pair<int, int>,
-                                 std::set<odb::dbNet*>>& nets_by_cell) {
+                  const std::map<std::pair<int, int>, std::set<odb::dbNet*>>&
+                      nets_by_cell) {
     if (cells.empty()) {
       return;
     }
