@@ -133,7 +133,7 @@ float CUGR::calculatePartialSlack()
   // Re-mark res-aware nets using this (routing) slack. Must run here:
   // the loop below overwrites non-critical nets' slack with a large
   // value for sorting, so the real slack is only available now.
-  markResAwareNets(critical_nets_percentage_);
+  markResAwareNets();
 
   std::ranges::stable_sort(slacks);
 
@@ -168,6 +168,9 @@ float CUGR::getNetSlack(odb::dbNet* net)
 
 void CUGR::setInitialNetSlacks()
 {
+  // Stage 1 routes neutrally (no res-aware), so this only computes the
+  // placement slacks used by the default net ordering. Res-aware marking
+  // happens in patternRouteResAware() once real 3D trees exist.
   for (const auto& net : gr_nets_) {
     if (net == nullptr) {
       continue;
@@ -175,15 +178,11 @@ void CUGR::setInitialNetSlacks()
     float slack = getNetSlack(net->getDbNet());
     net->setSlack(slack);
   }
-  // PatternRoute uses (noisier) placement slack, so widen the critical
-  // set; later passes re-mark and tighten with routing slack.
-  markResAwareNets(
-      std::min(100.0f, critical_nets_percentage_ * kPatternRouteWiden));
 }
 
-void CUGR::markResAwareNets(const float percentage)
+void CUGR::markResAwareNets()
 {
-  if (!resistance_aware_ || percentage <= 0.0f) {
+  if (!resistance_aware_) {
     return;
   }
 
@@ -252,7 +251,7 @@ void CUGR::markResAwareNets(const float percentage)
     return std::tie(lhs.second, lhs.first) < std::tie(rhs.second, rhs.first);
   });
   const int count
-      = static_cast<int>(std::ceil(scored.size() * percentage / 100));
+      = static_cast<int>(std::ceil(scored.size() * kResAwarePercentage / 100));
   for (int i = 0; i < count && i < static_cast<int>(scored.size()); i++) {
     gr_nets_[scored[i].first]->setResAware(true);
   }
@@ -364,7 +363,8 @@ void CUGR::patternRoute(std::vector<int>& net_indices)
     setInitialNetSlacks();
   }
 
-  sortNetIndices(net_indices);
+  // Stage 1 is neutral: order by the default slack/bbox key, no res-aware.
+  sortNetIndices(net_indices, /*res_aware_order=*/false);
   for (const int net_index : net_indices) {
     if (gr_nets_[net_index] == nullptr) {
       continue;
@@ -393,6 +393,53 @@ void CUGR::patternRoute(std::vector<int>& net_indices)
   updateCongestedNets(net_indices);
 }
 
+void CUGR::patternRouteResAware(std::vector<int>& net_indices)
+{
+  if (!resistance_aware_ || critical_nets_percentage_ == 0) {
+    return;
+  }
+  logger_->report("Stage 1.5: Resistance-aware re-route of critical nets.");
+
+  // Stage 1 routed neutrally, so real 3D trees now exist: mark the
+  // res-aware set from those (real per-net resistance), unlike FastRoute
+  // which can only mark at layer assignment.
+  calculatePartialSlack();
+
+  std::vector<int> res_aware_nets;
+  for (const auto& net : gr_nets_) {
+    if (net != nullptr && net->isResAware()) {
+      res_aware_nets.push_back(net->getIndex());
+    }
+  }
+  if (res_aware_nets.empty()) {
+    return;
+  }
+
+  // Most critical first, so they get first pick of upper-metal capacity.
+  sortNetIndices(res_aware_nets, /*res_aware_order=*/true);
+
+  // Re-route each critical net on the real resistance. No detours: this
+  // stage fixes layers/timing; the later congestion stages resolve any
+  // overflow it introduces.
+  for (const int net_index : res_aware_nets) {
+    GRNet* net = gr_nets_[net_index].get();
+    if (net == nullptr || net->getNumPins() < 2) {
+      continue;
+    }
+    grid_graph_->removeTreeUsage(net->getRoutingTree(), net->getNdrCosts());
+    PatternRoute pattern_route(
+        net, grid_graph_.get(), stt_builder_, constants_, logger_);
+    pattern_route.constructSteinerTree();
+    pattern_route.constructRoutingDAG();
+    pattern_route.run();
+    grid_graph_->addTreeUsage(net->getRoutingTree(), net->getNdrCosts());
+  }
+
+  // Refresh the congested set for the downstream stages, like every other
+  // routing stage. (The early returns above leave patternRoute's set as-is.)
+  updateCongestedNets(net_indices);
+}
+
 void CUGR::patternRouteWithDetours(std::vector<int>& net_indices)
 {
   if (net_indices.empty()) {
@@ -407,7 +454,8 @@ void CUGR::patternRouteWithDetours(std::vector<int>& net_indices)
   // (2d) direction -> x -> y -> has overflow?
   GridGraphView<bool> congestion_view;
   grid_graph_->extractCongestionView(congestion_view);
-  sortNetIndices(net_indices);
+  sortNetIndices(net_indices,
+                 resistance_aware_ && critical_nets_percentage_ != 0);
   for (const int net_index : net_indices) {
     if (gr_nets_[net_index] == nullptr) {
       continue;
@@ -449,7 +497,8 @@ void CUGR::mazeRoute(std::vector<int>& net_indices)
   }
   GridGraphView<CostT> wire_cost_view;
   grid_graph_->extractWireCostView(wire_cost_view);
-  sortNetIndices(net_indices);
+  sortNetIndices(net_indices,
+                 resistance_aware_ && critical_nets_percentage_ != 0);
   SparseGrid grid(10, 10, 0, 0);
   // Hoisted to reuse storage across NDR nets.
   GridGraphView<CostT> ndr_wire_cost_view;
@@ -516,6 +565,10 @@ void CUGR::route()
   }
 
   patternRoute(net_indices);
+
+  // Stage 1.5: resistance-aware re-route of the critical nets (always runs,
+  // not congestion-gated).
+  patternRouteResAware(net_indices);
 
   patternRouteWithDetours(net_indices);
 
@@ -818,9 +871,10 @@ NetRouteMap CUGR::getRoutes()
   return routes;
 }
 
-void CUGR::sortNetIndices(std::vector<int>& net_indices) const
+void CUGR::sortNetIndices(std::vector<int>& net_indices,
+                          const bool res_aware_order) const
 {
-  if (resistance_aware_ && critical_nets_percentage_ != 0) {
+  if (res_aware_order) {
     // Multi-factor res-aware ordering (slack + resistance + fanout +
     // length): critical nets route first so they get the best topology
     // and first pick of upper-metal capacity. (Mimicking FR's full

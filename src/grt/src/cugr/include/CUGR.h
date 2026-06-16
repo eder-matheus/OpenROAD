@@ -167,6 +167,11 @@ class CUGR
                            double threshold = 1.0);
 
   void patternRoute(std::vector<int>& net_indices);
+  // Unconditional resistance-aware re-route of the critical nets, run right
+  // after the (neutral) first PatternRoute. Marks res-aware nets from the
+  // real 3D trees and re-routes them so they get good (upper-metal) layers
+  // even when no congestion stage runs.
+  void patternRouteResAware(std::vector<int>& net_indices);
   void patternRouteWithDetours(std::vector<int>& net_indices);
   void mazeRoute(std::vector<int>& net_indices);
 
@@ -190,7 +195,10 @@ class CUGR
    *                    `updateCongestedNets`).
    */
   void iterativeRRR(std::vector<int>& net_indices);
-  void sortNetIndices(std::vector<int>& net_indices) const;
+  // res_aware_order selects the multi-factor res-aware ordering (critical
+  // nets first); when false the default slack/bbox ordering is used.
+  void sortNetIndices(std::vector<int>& net_indices,
+                      bool res_aware_order) const;
   void getGuides(const GRNet* net,
                  std::vector<std::pair<int, grt::BoxT>>& guides);
   void printStatistics() const;
@@ -246,17 +254,19 @@ class CUGR
   int worst_fanout_ = 1;
   int worst_net_length_ = 1;
 
-  // The initial PatternRoute pass marks a wider critical set because its
-  // placement slack is noisier than the routing slack used later.
-  static constexpr float kPatternRouteWiden = 2.0f;
+  // Fraction (percent) of eligible candidate nets marked res-aware,
+  // matching FastRoute's updateSlacks() default. Independent of the
+  // critical_nets_percentage_ ordering knob.
+  static constexpr float kResAwarePercentage = 15.0f;
 
   // Selects the res-aware net set, mirroring FastRoute's updateSlacks():
   // clock and NDR nets are always res-aware; short, single-pin and
   // (non-clock) positive-slack nets are excluded; the remaining nets are
   // ranked by the multi-factor res-aware score and the most critical
-  // `percentage` are marked. Also refreshes the per-net resistance/length +
-  // worst_* ordering normalisers. No-op unless resistance_aware_.
-  void markResAwareNets(float percentage);
+  // kResAwarePercentage are marked. Also refreshes the per-net
+  // resistance/length + worst_* ordering normalisers. No-op unless
+  // resistance_aware_.
+  void markResAwareNets();
 
   // FR-style ordering score (lower routes first): slack/resistance/
   // fanout/length blend, each normalised by the per-run worst.
