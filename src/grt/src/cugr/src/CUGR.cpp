@@ -86,6 +86,7 @@ void CUGR::init(const int min_routing_layer,
                 const odb::PtrSet<odb::dbNet>& clock_nets)
 {
   constants_.min_routing_layer = min_routing_layer - 1;
+  clock_nets_ = clock_nets;
   design_ = std::make_unique<Design>(db_,
                                      logger_,
                                      constants_,
@@ -186,58 +187,74 @@ void CUGR::markResAwareNets(const float percentage)
     return;
   }
 
-  // Per-net resistance/length + worst_* normalisers.
+  // Recompute the res-aware set from scratch on every call.
+  for (const auto& net : gr_nets_) {
+    if (net != nullptr) {
+      net->setResAware(false);
+    }
+  }
+
+  // worst_* normalisers for getResAwareScore, computed over the eligible
+  // (non-skipped) nets, matching FastRoute's updateWorstMetrics().
   worst_slack_ = std::numeric_limits<float>::max();
   worst_resistance_ = 1.0f;
   worst_fanout_ = 1;
   worst_net_length_ = 1;
 
+  // Pass 1: refresh per-net resistance/length, force clock/NDR nets
+  // res-aware, and collect the remaining eligible candidates. Mirrors the
+  // filtering in FastRoute's updateSlacks(): short, single-pin and
+  // (non-clock) positive-slack/unconstrained nets are skipped.
+  std::vector<int> candidates;
+  candidates.reserve(gr_nets_.size());
   for (const auto& net : gr_nets_) {
     if (net == nullptr) {
       continue;
     }
     const auto& tree = net->getRoutingTree();
-    const float resistance
-        = grid_graph_->getNetResistance(tree, net->getNdrWidths());
-    net->setResistance(resistance);
+    net->setResistance(
+        grid_graph_->getNetResistance(tree, net->getNdrWidths()));
     // Routed-tree planar length when available; bbox half-perimeter is
     // only a fallback before the first route exists (PatternRoute).
     net->setNetLength(tree ? grid_graph_->getTreeLength(tree)
                            : net->getBoundingBox().hp());
-    worst_resistance_ = std::max(worst_resistance_, resistance);
+
+    const bool is_clock = clock_nets_.contains(net->getDbNet());
+    // A positive slack also excludes unconstrained nets (slack == +inf).
+    const bool is_positive_slack = net->getSlack() > 0.0f && !is_clock;
+    const bool is_short
+        = net->getNetLength() <= constants_.resistance_min_net_length;
+    if (net->getNumPins() < 2 || is_short || is_positive_slack) {
+      continue;
+    }
+
+    worst_resistance_ = std::max(worst_resistance_, net->getResistance());
     worst_fanout_ = std::max(worst_fanout_, net->getNumPins());
     worst_net_length_ = std::max(worst_net_length_, net->getNetLength());
     worst_slack_ = std::min(worst_slack_, net->getSlack());
+
+    // Clock and NDR nets are always res-aware (match FastRoute).
+    if (is_clock || net->hasNdr()) {
+      net->setResAware(true);
+    } else {
+      candidates.push_back(net->getIndex());
+    }
   }
 
-  // Mark the top-`percentage` nets by the same percentile slack threshold
-  // as calculatePartialSlack.
-  std::vector<float> slacks;
-  slacks.reserve(gr_nets_.size());
-  for (const auto& net : gr_nets_) {
-    if (net == nullptr) {
-      continue;
-    }
-    slacks.push_back(net->getSlack());
+  // Pass 2: rank eligible candidates by the multi-factor res-aware score
+  // (lower = more critical) and mark the most critical `percentage`.
+  std::vector<std::pair<int, float>> scored;
+  scored.reserve(candidates.size());
+  for (const int index : candidates) {
+    scored.emplace_back(index, getResAwareScore(gr_nets_[index].get()));
   }
-  std::ranges::stable_sort(slacks);
-  const int threshold_index = std::ceil(slacks.size() * percentage / 100);
-  const float slack_th
-      = slacks.empty() ? 0.0f
-                       : slacks[std::min(static_cast<size_t>(threshold_index),
-                                         slacks.size() - 1)];
-  for (const auto& net : gr_nets_) {
-    if (net == nullptr) {
-      continue;
-    }
-    const bool multi_pin = net->getNumPins() >= 2;
-    // Skip short nets (FR's kShortNetThreshold), using the same length
-    // metric as the ordering score (routed-tree length, bbox hp pre-route).
-    const bool long_enough
-        = net->getNetLength() > constants_.resistance_min_net_length;
-    const bool is_critical
-        = net->getSlack() <= slack_th && net->getSlack() <= 0.0f;
-    net->setResAware(multi_pin && long_enough && is_critical);
+  std::ranges::stable_sort(scored, [](const auto& lhs, const auto& rhs) {
+    return std::tie(lhs.second, lhs.first) < std::tie(rhs.second, rhs.first);
+  });
+  const int count
+      = static_cast<int>(std::ceil(scored.size() * percentage / 100));
+  for (int i = 0; i < count && i < static_cast<int>(scored.size()); i++) {
+    gr_nets_[scored[i].first]->setResAware(true);
   }
 }
 

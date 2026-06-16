@@ -221,6 +221,8 @@ class CUGR
   std::vector<int> net_indices_;
   std::vector<std::unique_ptr<GRNet>> gr_nets_;
   std::unordered_map<odb::dbNet*, GRNet*> db_net_map_;
+  // Clock nets (from set_routing_layers -clock); always marked res-aware.
+  odb::PtrSet<odb::dbNet> clock_nets_;
 
   odb::dbDatabase* db_;
   utl::Logger* logger_;
@@ -248,9 +250,12 @@ class CUGR
   // placement slack is noisier than the routing slack used later.
   static constexpr float kPatternRouteWiden = 2.0f;
 
-  // Marks the top-`percentage` >= 2-pin nets res-aware and refreshes the
-  // per-net resistance/length + worst_* ordering normalisers. No-op
-  // unless resistance_aware_.
+  // Selects the res-aware net set, mirroring FastRoute's updateSlacks():
+  // clock and NDR nets are always res-aware; short, single-pin and
+  // (non-clock) positive-slack nets are excluded; the remaining nets are
+  // ranked by the multi-factor res-aware score and the most critical
+  // `percentage` are marked. Also refreshes the per-net resistance/length +
+  // worst_* ordering normalisers. No-op unless resistance_aware_.
   void markResAwareNets(float percentage);
 
   // FR-style ordering score (lower routes first): slack/resistance/
