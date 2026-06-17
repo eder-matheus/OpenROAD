@@ -71,6 +71,12 @@ struct Constants
   double wire_patch_threshold = 2.0;
   double wire_patch_inflation_rate = 1.2;
 
+  // Order the neutral first PatternRoute pass shortest-net-per-pin first
+  // (matching FastRoute's compareNetPins ordinary-net order) so long,
+  // low-fanout nets are routed last, after short nets have filled the low
+  // layers. false keeps the legacy worst-slack/bounding-box order.
+  bool defer_long_nets = true;
+
   bool write_heatmap = false;
 };
 
