@@ -271,6 +271,41 @@ void CUGR::markResAwareNets()
   for (int i = 0; i < count && i < static_cast<int>(scored.size()); i++) {
     gr_nets_[scored[i].first]->setResAware(true);
   }
+
+  // Res-aware set growth instrumentation (-debug_level GRT resAware 1). Each
+  // call reports how many candidates were marked and the running cumulative
+  // total, so the accumulate-vs-reset trajectory is visible across stages and
+  // RRR iterations. Level 2 additionally lists the nets newly marked.
+  if (logger_->debugCheck(GRT, "resAware", 1)) {
+    int total = 0;
+    for (const auto& net : gr_nets_) {
+      if (net != nullptr && net->isResAware()) {
+        total++;
+      }
+    }
+    const int newly = std::min(count, static_cast<int>(scored.size()));
+    logger_->report(
+        "Res-aware growth (markResAwareNets, {}): +{} marked of {} candidates "
+        "-> {} total ({:.2f}%)",
+        constants_.monotonic_res_aware ? "monotonic" : "reset",
+        newly,
+        scored.size(),
+        total,
+        gr_nets_.empty()
+            ? 0.0f
+            : 100.0f * total / static_cast<float>(gr_nets_.size()));
+    if (logger_->debugCheck(GRT, "resAware", 2)) {
+      for (int i = 0; i < newly; i++) {
+        const GRNet* net = gr_nets_[scored[i].first].get();
+        logger_->report("  + {} slack={:.2f}ps R={:.2f} fanout={} len={}",
+                        net->getName(),
+                        net->getSlack() * 1e12,
+                        net->getResistance(),
+                        net->getNumPins(),
+                        net->getNetLength());
+      }
+    }
+  }
 }
 
 float CUGR::getResAwareScore(const GRNet* net) const
@@ -433,6 +468,23 @@ void CUGR::patternRouteResAware(std::vector<int>& net_indices)
 
   // Most critical first, so they get first pick of upper-metal capacity.
   sortNetIndices(res_aware_nets, /*res_aware_order=*/true);
+
+  // Dump the res-aware nets in the order they are re-routed (their
+  // layer-assignment priority). Enable with -debug_level GRT resAware 1.
+  if (logger_->debugCheck(GRT, "resAware", 1)) {
+    logger_->report("CUGR res-aware nets in layer-assignment priority order:");
+    int rank = 0;
+    for (const int net_index : res_aware_nets) {
+      const GRNet* net = gr_nets_[net_index].get();
+      logger_->report("  {}: {} slack={:.2f}ps R={:.2f} fanout={} len={}",
+                      rank++,
+                      net->getName(),
+                      net->getSlack() * 1e12,
+                      net->getResistance(),
+                      net->getNumPins(),
+                      net->getNetLength());
+    }
+  }
 
   // Re-route each critical net on the real resistance. No detours: this
   // stage fixes layers/timing; the later congestion stages resolve any
