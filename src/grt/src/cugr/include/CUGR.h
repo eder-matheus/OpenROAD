@@ -77,6 +77,12 @@ struct Constants
   // layers. false keeps the legacy worst-slack/bounding-box order.
   bool defer_long_nets = true;
 
+  // Resource gate mirroring FastRoute assignEdge's exclusion of layers without
+  // free tracks: when a wire would not fit on an edge, its cost is inflated by
+  // this multiple of the base wire cost so the routing DAG prefers paying the
+  // via cost to climb to a non-full upper layer. 0 disables the gate.
+  double congestion_gate_penalty = 4.0;
+
   bool write_heatmap = false;
 };
 

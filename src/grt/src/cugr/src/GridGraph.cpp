@@ -430,6 +430,18 @@ CostT GridGraph::getWireCost(const int layer_index,
                  ? 1.0
                  : logistic(edge.capacity - edge.demand,
                             constants_.cost_logistic_slope * cost_multiplier_));
+  // Resource gate mirroring FastRoute assignEdge's exclusion of layers whose
+  // free tracks are below the net's per-edge cost. Applies only to real wire
+  // segments (demand >= 1.0), never the sub-1.0 via-patch demands, so a net can
+  // still climb *through* a congested layer. The penalty is finite: when every
+  // layer in range is full the routing DAG falls back to minimum-via (accepts
+  // congestion on a low layer), like FastRoute's has_2D_overflow path.
+  if (constants_.congestion_gate_penalty > 0.0 && demand >= 1.0
+      && edge.capacity >= 1.0
+      && edge.capacity - edge.demand < demand * net_factor) {
+    cost += demand_length * unit_length_wire_cost_
+            * constants_.congestion_gate_penalty;
+  }
   return cost;
 }
 
