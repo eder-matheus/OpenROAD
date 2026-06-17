@@ -189,10 +189,16 @@ void CUGR::markResAwareNets()
     return;
   }
 
-  // Recompute the res-aware set from scratch on every call.
-  for (const auto& net : gr_nets_) {
-    if (net != nullptr) {
-      net->setResAware(false);
+  // Recompute the res-aware set from scratch on every call, unless monotonic
+  // accumulation is enabled: then keep the existing marks and only add new
+  // critical nets this call, matching FastRoute's updateSlacks() which never
+  // un-marks. The set then grows across stages/RRR iterations as slacks
+  // degrade, instead of being recomputed to a fixed size each time.
+  if (!constants_.monotonic_res_aware) {
+    for (const auto& net : gr_nets_) {
+      if (net != nullptr) {
+        net->setResAware(false);
+      }
     }
   }
 
@@ -242,7 +248,10 @@ void CUGR::markResAwareNets()
     // Clock and NDR nets are always res-aware (match FastRoute).
     if (is_clock || net->hasNdr()) {
       net->setResAware(true);
-    } else {
+    } else if (!net->isResAware()) {
+      // Skip nets already marked, so the set accumulates under monotonic mode;
+      // under reset mode nothing is marked yet, so this matches the legacy
+      // behaviour.
       candidates.push_back(net->getIndex());
     }
   }
