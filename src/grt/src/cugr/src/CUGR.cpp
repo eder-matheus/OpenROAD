@@ -86,7 +86,6 @@ void CUGR::init(const int min_routing_layer,
                 const odb::PtrSet<odb::dbNet>& clock_nets)
 {
   constants_.min_routing_layer = min_routing_layer - 1;
-  clock_nets_ = clock_nets;
   design_ = std::make_unique<Design>(db_,
                                      logger_,
                                      constants_,
@@ -146,13 +145,17 @@ float CUGR::calculatePartialSlack()
                        : slacks[std::min(static_cast<size_t>(threshold_index),
                                          slacks.size() - 1)];
 
-  // Set the non critical nets slack as the maximum float value, so they can be
-  // ordered by the default sorting method.
+  // Push non-critical nets to the back of the default (slack) ordering by
+  // setting their slack to the maximum float value. Res-aware nets are
+  // exempt: markResAwareNets() may select a high-resistance/fanout net whose
+  // slack is above slack_th, and clobbering it would corrupt the real slack
+  // that getResAwareScore() needs to order the res-aware set correctly.
   for (const int& net_index : net_indices_) {
     if (gr_nets_[net_index] == nullptr) {
       continue;
     }
-    if (gr_nets_[net_index]->getSlack() > slack_th) {
+    if (gr_nets_[net_index]->getSlack() > slack_th
+        && !gr_nets_[net_index]->isResAware()) {
       gr_nets_[net_index]->setSlack(
           std::ceil(std::numeric_limits<float>::max()));
     }
@@ -218,7 +221,11 @@ void CUGR::markResAwareNets()
     net->setNetLength(tree ? grid_graph_->getTreeLength(tree)
                            : net->getBoundingBox().hp());
 
-    const bool is_clock = clock_nets_.contains(net->getDbNet());
+    // Match FastRoute: treat every CLOCK-sigType net as clock (incl. leaf
+    // clock nets driving flops), not just the non-leaf clock tree, so clock
+    // nets are force-marked res-aware and get layer-assignment priority.
+    const bool is_clock
+        = net->getDbNet()->getSigType() == odb::dbSigType::CLOCK;
     // A positive slack also excludes unconstrained nets (slack == +inf).
     const bool is_positive_slack = net->getSlack() > 0.0f && !is_clock;
     const bool is_short

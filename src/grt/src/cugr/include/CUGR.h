@@ -229,8 +229,6 @@ class CUGR
   std::vector<int> net_indices_;
   std::vector<std::unique_ptr<GRNet>> gr_nets_;
   std::unordered_map<odb::dbNet*, GRNet*> db_net_map_;
-  // Clock nets (from set_routing_layers -clock); always marked res-aware.
-  odb::PtrSet<odb::dbNet> clock_nets_;
 
   odb::dbDatabase* db_;
   utl::Logger* logger_;
