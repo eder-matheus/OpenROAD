@@ -83,6 +83,14 @@ struct Constants
   // via cost to climb to a non-full upper layer. 0 disables the gate.
   double congestion_gate_penalty = 4.0;
 
+  // Accumulate the resistance-aware set across calls instead of recomputing it
+  // from scratch. Matches FastRoute's updateSlacks(), which only ever adds to
+  // the set (never un-marks), so it grows as routing degrades slacks. Only ever
+  // marks negative-slack critical nets (clock/NDR plus the top fraction of
+  // negative-slack candidates), never ordinary positive-slack nets. false
+  // recomputes a fixed top fraction each call.
+  bool monotonic_res_aware = true;
+
   bool write_heatmap = false;
 };
 
