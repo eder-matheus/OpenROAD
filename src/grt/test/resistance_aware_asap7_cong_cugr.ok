@@ -43,14 +43,15 @@ Nets:                416
 Special nets:        0
 Routing layers:      6
 Stage 1: Pattern routing.
+Stage 1.5: Resistance-aware re-route of critical nets.
 Stage 2: Pattern routing with detours.
 Routing statistics
-Wire length:           34080
-Total via count:       2557
+Wire length:           34197
+Total via count:       2476
 Total congestion:      0
-Min resource:          0.26666635672251626
-Bottleneck:            (1, 90, 156)
+Min resource:          0.2824558542485818
+Bottleneck:            (4, 83, 152)
 baseline (no resistance-aware) WNS: -122.0 ps  TNS: -2912.8 ps
-resistance-aware               WNS: -121.6 ps  TNS: -2860.3 ps
+resistance-aware               WNS: -121.3 ps  TNS: -2849.4 ps
 resistance-aware WNS and TNS not worse than baseline: PASS
 No differences found.
