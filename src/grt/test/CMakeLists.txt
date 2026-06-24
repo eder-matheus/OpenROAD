@@ -79,6 +79,7 @@ or_integration_tests(
     repair_antennas2
     repair_antennas3
     repair_antennas4
+    repair_antennas_adjacent_jumpers
     repair_antennas_allow_congestion
     repair_antennas_error1
     repair_antennas_error2
@@ -98,6 +99,7 @@ or_integration_tests(
     resistance_aware_asap7_fr
     resistance_aware_cugr
     resistance_aware_highres_cugr
+    res_aware_nets_percentage
     set_nets_to_route1
     silence
     single_row
