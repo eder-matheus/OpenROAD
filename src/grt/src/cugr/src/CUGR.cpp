@@ -1274,6 +1274,9 @@ void CUGR::getBTermsAccessPoints(
 
 void CUGR::addDirtyNet(odb::dbNet* net)
 {
+  if (!design_) {
+    return;
+  }
   auto it = db_net_map_.find(net);
   if (it != db_net_map_.end()) {
     GRNet* gr_net = it->second;
@@ -1290,6 +1293,9 @@ void CUGR::addDirtyNet(odb::dbNet* net)
 
 void CUGR::updateNet(odb::dbNet* db_net)
 {
+  if (!design_) {
+    return;
+  }
   auto it = db_net_map_.find(db_net);
   if (it != db_net_map_.end()) {
     GRNet* gr_net = it->second;
@@ -1319,6 +1325,9 @@ void CUGR::updateNet(odb::dbNet* db_net)
 
 void CUGR::removeNet(odb::dbNet* db_net)
 {
+  if (!design_) {
+    return;
+  }
   auto it = db_net_map_.find(db_net);
   if (it == db_net_map_.end()) {
     design_->removeNet(db_net);
@@ -1596,8 +1605,6 @@ void CUGR::routeIncremental()
     }
     route();
   }
-
-  printStatistics();
 }
 
 }  // namespace grt

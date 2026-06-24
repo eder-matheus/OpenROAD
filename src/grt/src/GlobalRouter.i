@@ -175,12 +175,8 @@ set_infinite_cap(bool infinite_capacity)
 {
   getGlobalRouter()->setInfiniteCapacity(infinite_capacity);
 }
-// NOTE: Debug-only. Not part of the public incremental API.
-void
-update_cugr_net(odb::dbNet* net)
-{
-  getGlobalRouter()->updateCUGRNet(net);
-}
+
+
 
 void start_incremental()
 {
