@@ -75,7 +75,7 @@ struct Constants
   // (matching FastRoute's compareNetPins ordinary-net order) so long,
   // low-fanout nets are routed last, after short nets have filled the low
   // layers. false keeps the legacy worst-slack/bounding-box order.
-  bool defer_long_nets = true;
+  bool defer_long_nets = false;
 
   // Resource gate mirroring FastRoute assignEdge's exclusion of layers without
   // free tracks: when a wire would not fit on an edge, its cost is inflated by
