@@ -415,6 +415,12 @@ double GridGraph::logistic(const CapacityT& input, const double slope) const
   return 1.0 / (1.0 + exp(input * slope));
 }
 
+// Prohibitive-but-finite cost added by the hard layer gate to a full edge when
+// a same-direction layer with room exists. Large enough to dwarf any real
+// per-net cost (so the DAG always prefers the layer with room) yet finite, so
+// summing it across a tree of edges never overflows CostT.
+static constexpr CostT kHardLayerGateCost = 1e8;
+
 CostT GridGraph::getWireCost(const int layer_index,
                              const PointT lower,
                              const CapacityT demand,
@@ -433,14 +439,36 @@ CostT GridGraph::getWireCost(const int layer_index,
   // Resource gate mirroring FastRoute assignEdge's exclusion of layers whose
   // free tracks are below the net's per-edge cost. Applies only to real wire
   // segments (demand >= 1.0), never the sub-1.0 via-patch demands, so a net can
-  // still climb *through* a congested layer. The penalty is finite: when every
-  // layer in range is full the routing DAG falls back to minimum-via (accepts
-  // congestion on a low layer), like FastRoute's has_2D_overflow path.
+  // still climb *through* a congested layer.
   if (constants_.congestion_gate_penalty > 0.0 && demand >= 1.0
       && edge.capacity >= 1.0
       && edge.capacity - edge.demand < demand * net_factor) {
-    cost += demand_length * unit_length_wire_cost_
-            * constants_.congestion_gate_penalty;
+    // This layer's edge cannot fit the wire. When the hard gate is on
+    // (post-2D-saturation) and *some other* same-direction layer at this tile
+    // still fits it, reject this full layer with a prohibitive finite cost so
+    // the DAG climbs to the layer with room — FastRoute assignEdge's BIG_INT.
+    // Otherwise (gate off, or genuine 2D-aggregate overflow: no same-direction
+    // layer fits) fall back to the soft penalty so via/resistance costs still
+    // arbitrate instead of deadlocking, like FastRoute's has_2D_overflow path.
+    bool hard_reject = false;
+    if (hard_layer_gate_) {
+      ++gate_evals_;
+      for (int l = 0; l < num_layers_; ++l) {
+        if (l != layer_index && layer_directions_[l] == direction
+            && graph_edges_[l][lower.x()][lower.y()].getResource()
+                   >= demand * net_factor) {
+          hard_reject = true;
+          break;
+        }
+      }
+    }
+    if (hard_reject) {
+      ++gate_hard_rejects_;
+      cost += kHardLayerGateCost;
+    } else {
+      cost += demand_length * unit_length_wire_cost_
+              * constants_.congestion_gate_penalty;
+    }
   }
   return cost;
 }
@@ -820,9 +848,14 @@ AccessPointSet GridGraph::selectAccessPoints(GRNet* net) const
 void GridGraph::commit(const int layer_index,
                        const PointT lower,
                        const CapacityT demand,
-                       const double net_factor)
+                       const double net_factor,
+                       const bool is_via)
 {
-  graph_edges_[layer_index][lower.x()][lower.y()].demand += demand * net_factor;
+  auto& edge = graph_edges_[layer_index][lower.x()][lower.y()];
+  edge.demand += demand * net_factor;
+  if (is_via) {
+    edge.via_demand += demand * net_factor;
+  }
   congestion_info_dirty_ = true;
 }
 
@@ -883,10 +916,10 @@ void GridGraph::commitVia(const int layer_index,
       const double layer_factor
           = std::cmp_less(l, net_costs.size()) ? net_costs[l] : 1.0;
       if (lower_edge_length > 0) {
-        commit(l, lower_loc, (rip_up ? -demand : demand), layer_factor);
+        commit(l, lower_loc, (rip_up ? -demand : demand), layer_factor, true);
       }
       if (higher_edge_length > 0) {
-        commit(l, loc, (rip_up ? -demand : demand), layer_factor);
+        commit(l, loc, (rip_up ? -demand : demand), layer_factor, true);
       }
     }
   }

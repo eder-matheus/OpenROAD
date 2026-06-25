@@ -666,6 +666,9 @@ void CUGR::debugCongestion2D() const
 
   double total_3d_overflow = 0.0;
   double total_2d_overflow = 0.0;
+  double total_wire_only_overflow = 0.0;
+  double movable_spreadable = 0.0;
+  double stuck_spreadable = 0.0;
   int tiles_3d_only = 0;
   int tiles_2d = 0;
 
@@ -690,6 +693,7 @@ void CUGR::debugCongestion2D() const
         double sum_cap = 0.0;
         double sum_dem = 0.0;
         double per_layer_overflow_sum = 0.0;
+        double max_layer_resource = 0.0;
         for (int l : same_dir_layers) {
           const auto& edge = grid_graph_->getEdge(l, x, y);
           sum_cap += std::max(edge.capacity, 0.0);
@@ -698,6 +702,14 @@ void CUGR::debugCongestion2D() const
           if (ovf > 0.0) {
             per_layer_overflow_sum += ovf;
           }
+          // Overflow with via-patch demand removed: how much is genuine wire
+          // congestion vs via demand FastRoute would not count as 2D overflow.
+          const double wire_ovf
+              = (edge.demand - edge.via_demand) - edge.capacity;
+          if (wire_ovf > 0.0) {
+            total_wire_only_overflow += wire_ovf;
+          }
+          max_layer_resource = std::max(max_layer_resource, edge.getResource());
         }
         const double tile_2d_overflow = std::max(0.0, sum_dem - sum_cap);
         total_3d_overflow += per_layer_overflow_sum;
@@ -706,6 +718,16 @@ void CUGR::debugCongestion2D() const
           ++tiles_2d;
         } else if (per_layer_overflow_sum > 0.0) {
           ++tiles_3d_only;
+          // Split spreadable overflow by whether the hard gate can actually
+          // move it: it relocates a wire only if some same-direction layer at
+          // this tile has a whole free track (getResource >= 1). Otherwise the
+          // aggregate room is fractional-split across layers and no single
+          // wire move helps — "spreadable" by the 2D metric but stuck.
+          if (max_layer_resource >= 1.0) {
+            movable_spreadable += per_layer_overflow_sum;
+          } else {
+            stuck_spreadable += per_layer_overflow_sum;
+          }
         }
       }
     }
@@ -724,6 +746,12 @@ void CUGR::debugCongestion2D() const
              GRT,
              "rrr_2d",
              1,
+             "    wire-only (no via patch): {} units",
+             rnd(total_wire_only_overflow));
+  debugPrint(logger_,
+             GRT,
+             "rrr_2d",
+             1,
              "  2D-aggregate overflow:     {} units (unavoidable)",
              rnd(total_2d_overflow));
   debugPrint(
@@ -737,6 +765,18 @@ void CUGR::debugCongestion2D() const
              GRT,
              "rrr_2d",
              1,
+             "    track-movable:           {} units (a layer has a free track)",
+             rnd(movable_spreadable));
+  debugPrint(logger_,
+             GRT,
+             "rrr_2d",
+             1,
+             "    fractional-stuck:        {} units (only sub-track room)",
+             rnd(stuck_spreadable));
+  debugPrint(logger_,
+             GRT,
+             "rrr_2d",
+             1,
              "  Tiles with 3D-only ovf:    {}",
              tiles_3d_only);
   debugPrint(logger_,
@@ -745,6 +785,41 @@ void CUGR::debugCongestion2D() const
              1,
              "  Tiles with 2D ovf:         {} (true planar congestion)",
              tiles_2d);
+}
+
+int CUGR::total2DOverflow() const
+{
+  const int x_size = grid_graph_->getXSize();
+  const int y_size = grid_graph_->getYSize();
+  const int num_layers = grid_graph_->getNumLayers();
+
+  double total_2d_overflow = 0.0;
+  for (int direction = 0; direction < 2; ++direction) {
+    std::vector<int> same_dir_layers;
+    for (int l = constants_.min_routing_layer; l < num_layers; ++l) {
+      if (grid_graph_->getLayerDirection(l) == direction) {
+        same_dir_layers.push_back(l);
+      }
+    }
+    if (same_dir_layers.empty()) {
+      continue;
+    }
+    const int x_max = (direction == MetalLayer::H) ? x_size - 1 : x_size;
+    const int y_max = (direction == MetalLayer::H) ? y_size : y_size - 1;
+    for (int x = 0; x < x_max; ++x) {
+      for (int y = 0; y < y_max; ++y) {
+        double sum_cap = 0.0;
+        double sum_dem = 0.0;
+        for (int l : same_dir_layers) {
+          const auto& edge = grid_graph_->getEdge(l, x, y);
+          sum_cap += std::max(edge.capacity, 0.0);
+          sum_dem += edge.demand;
+        }
+        total_2d_overflow += std::max(0.0, sum_dem - sum_cap);
+      }
+    }
+  }
+  return static_cast<int>(std::round(total_2d_overflow));
 }
 
 void CUGR::iterativeRRR(std::vector<int>& net_indices)
@@ -764,9 +839,23 @@ void CUGR::iterativeRRR(std::vector<int>& net_indices)
   constexpr double kCongestionThreshold = 0.9;
   // Iterations in the congested set before an NDR net is demoted.
   constexpr int kSoftNdrStreakThreshold = 2;
+  // Iterations of no improvement that count as "saturated" — used both to
+  // detect the 2D maze plateau (phase 1 -> 2) and the spreadable-cleared
+  // plateau (phase 2 terminal).
+  constexpr int kSaturationStreak = 2;
 
   std::unordered_map<int, int> ndr_congested_streak;
   int soft_ndr_demotions = 0;
+
+  // Two-phase RRR: phase 1 is the soft maze driving the planar (2D-aggregate)
+  // overflow down; once the maze saturates (cost ramp capped AND the 2D floor
+  // stops improving) phase 2 turns on the hard layer gate to clear the
+  // remaining spreadable (3D-only) overflow. See total2DOverflow().
+  bool gate_on = false;
+  int prev_2d_floor = std::numeric_limits<int>::max();
+  int floor_stale = 0;
+  int prev_overflow = std::numeric_limits<int>::max();
+  int overflow_stale = 0;
 
   double multiplier = 1.0;
   for (int i = 1; i <= congestion_iterations_; ++i) {
@@ -822,10 +911,66 @@ void CUGR::iterativeRRR(std::vector<int>& net_indices)
       multiplier += kMultiplierStep;
     }
     grid_graph_->setCostMultiplier(multiplier);
+
+    // Phase 1 -> 2: turn on the hard layer gate once the maze can no longer
+    // lower the planar 2D-aggregate floor. Two cases:
+    //   - floor already 0: all remaining overflow is spreadable, which only
+    //     the gate can fix, so gate immediately — don't burn soft iterations
+    //     (and the cost ramp has no planar overflow to act on anyway).
+    //   - floor > 0: give the maze its full cost ramp first, then gate once
+    //     the ramp is capped AND the floor has stopped improving (genuine
+    //     planar congestion the maze cannot beat).
+    if (!gate_on) {
+      const int floor_2d = total2DOverflow();
+      if (floor_2d == 0) {
+        gate_on = true;
+      } else if (multiplier >= kMultiplierCap) {
+        floor_stale = (floor_2d >= prev_2d_floor) ? floor_stale + 1 : 0;
+        if (floor_stale >= kSaturationStreak) {
+          gate_on = true;
+        }
+      }
+      prev_2d_floor = floor_2d;
+      if (gate_on) {
+        grid_graph_->setHardLayerGate(true);
+        logger_->info(
+            GRT,
+            119,
+            "Enabling hard layer-assignment gate (2D-aggregate floor {}).",
+            floor_2d);
+      }
+    }
+
     logger_->info(
         GRT, 117, "Start extra iteration {}/{}", i, congestion_iterations_);
+    if (gate_on) {
+      grid_graph_->resetGateStats();
+    }
     mazeRoute(net_indices);
+    if (gate_on) {
+      debugPrint(logger_,
+                 GRT,
+                 "rrr_2d",
+                 1,
+                 "  gate: {} full-edge evals, {} hard rejects",
+                 grid_graph_->getGateEvals(),
+                 grid_graph_->getGateHardRejects());
+    }
+
+    // Phase 2 terminal: the gate clears only spreadable (3D-only) overflow.
+    // Once total overflow reaches the 2D floor or stops decreasing, the
+    // spreadable part is gone and further iterations cannot help — stop.
+    if (gate_on) {
+      const int overflow = totalOverflow();
+      overflow_stale = (overflow >= prev_overflow) ? overflow_stale + 1 : 0;
+      prev_overflow = overflow;
+      if (overflow == 0 || overflow <= total2DOverflow()
+          || overflow_stale >= kSaturationStreak) {
+        break;
+      }
+    }
   }
+  grid_graph_->setHardLayerGate(false);
   grid_graph_->setCostMultiplier(1.0);
   if (soft_ndr_demotions > 0) {
     logger_->info(GRT,

@@ -66,6 +66,9 @@ struct GraphEdge
 
   CapacityT capacity{0};
   CapacityT demand{0};
+  // Portion of `demand` contributed by via patches (commitVia), tracked so the
+  // overflow split can separate wire congestion from via-patch demand.
+  CapacityT via_demand{0};
 };
 
 class GridGraph
@@ -218,6 +221,26 @@ class GridGraph
   double getCostMultiplier() const { return cost_multiplier_; }
 
   /**
+   * @brief Toggles the hard layer-assignment gate in `getWireCost`.
+   *
+   * When enabled, a full edge whose same-direction column still has a
+   * layer that fits the wire is rejected with a prohibitive (but finite)
+   * cost instead of the soft `congestion_gate_penalty`, forcing the
+   * routing DAG to climb to that layer — FastRoute `assignEdge`'s
+   * hard-reject behaviour. Off by default so the pattern stages and the
+   * pre-saturation maze passes keep their soft distribution; CUGR's
+   * iterative RRR turns it on only after the 2D maze has saturated.
+   */
+  void setHardLayerGate(bool enable) { hard_layer_gate_ = enable; }
+  bool isHardLayerGate() const { return hard_layer_gate_; }
+
+  // Debug instrumentation for the hard gate: how many full-edge evaluations
+  // the gate saw and how many it hard-rejected. Reset/read per RRR pass.
+  void resetGateStats() { gate_evals_ = 0; gate_hard_rejects_ = 0; }
+  int64_t getGateEvals() const { return gate_evals_; }
+  int64_t getGateHardRejects() const { return gate_hard_rejects_; }
+
+  /**
    * @brief Counts congested edges traversed by a routing tree.
    *
    * Walks the tree's wire segments and returns how many edges satisfy
@@ -342,7 +365,8 @@ class GridGraph
   void commit(int layer_index,
               PointT lower,
               CapacityT demand,
-              double net_factor = 1.0);
+              double net_factor = 1.0,
+              bool is_via = false);
   void commitWire(int layer_index,
                   PointT lower,
                   bool rip_up = false,
@@ -403,6 +427,11 @@ class GridGraph
   const Constants constants_;
   // RRR slope multiplier. 1.0 leaves the cost surface unchanged.
   double cost_multiplier_ = 1.0;
+  // Hard layer-assignment gate (see setHardLayerGate). Off until CUGR's
+  // iterative RRR enables it post-2D-saturation.
+  bool hard_layer_gate_ = false;
+  mutable int64_t gate_evals_ = 0;
+  mutable int64_t gate_hard_rejects_ = 0;
   // First non-zero sheet / via resistance across routing layers: the
   // reference for the res-aware costs. Scanning (vs. always layer 0) keeps
   // the cost alive on techs that leave the bottom layer's resistance

@@ -244,6 +244,19 @@ class CUGR
    */
   void debugCongestion2D() const;
 
+  /**
+   * @brief Planar (2D-aggregate) overflow — the irreducible layer-assignment
+   *        floor.
+   *
+   * Sums `max(0, sum_demand - sum_capacity)` over same-direction layers per
+   * tile. This is the overflow no layer assignment can remove (every
+   * spreadable / "3D-only" unit has been collapsed away). The hard layer gate
+   * drives `totalOverflow()` down toward this value; `iterativeRRR` uses it to
+   * detect 2D-maze saturation (phase 1 -> 2) and to stop once spreadable
+   * overflow is cleared.
+   */
+  int total2DOverflow() const;
+
   std::unique_ptr<Design> design_;
   std::unique_ptr<GridGraph> grid_graph_;
   std::vector<int> net_indices_;
