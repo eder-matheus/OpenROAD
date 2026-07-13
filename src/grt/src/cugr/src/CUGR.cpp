@@ -11,6 +11,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <queue>
 #include <set>
 #include <sstream>
 #include <string>
@@ -1410,6 +1411,162 @@ void CUGR::updateNet(odb::dbNet* db_net)
   }
 }
 
+std::shared_ptr<GRTreeNode> CUGR::buildTreeFromRoute(const GRoute& route) const
+{
+  // Collect gcell nodes and unit edges (deduplicated) from the segments.
+  std::map<uint64_t, GRPoint> nodes;
+  std::map<uint64_t, std::set<uint64_t>> adjacency;
+  const auto addNode = [&](const GRPoint& point) {
+    const uint64_t key = grid_graph_->hashCell(point);
+    nodes.emplace(key, point);
+    return key;
+  };
+  const auto addEdge = [&](const GRPoint& from, const GRPoint& to) {
+    const uint64_t from_key = addNode(from);
+    const uint64_t to_key = addNode(to);
+    adjacency[from_key].insert(to_key);
+    adjacency[to_key].insert(from_key);
+  };
+
+  for (const GSegment& segment : route) {
+    const int init_layer = segment.init_layer - 1;
+    const int final_layer = segment.final_layer - 1;
+    if (segment.isVia()) {
+      const BoxT cells = grid_graph_->rangeSearchCells(BoxT(
+          segment.init_x, segment.init_y, segment.final_x, segment.final_y));
+      const int x = cells[0].low();
+      const int y = cells[1].low();
+      const auto [low_layer, high_layer] = std::minmax(init_layer, final_layer);
+      addNode(GRPoint(low_layer, x, y));
+      for (int layer = low_layer; layer < high_layer; layer++) {
+        addEdge(GRPoint(layer, x, y), GRPoint(layer + 1, x, y));
+      }
+    } else {
+      if (init_layer != final_layer) {
+        return nullptr;
+      }
+      const BoxT cells = grid_graph_->rangeSearchCells(BoxT(
+          segment.init_x, segment.init_y, segment.final_x, segment.final_y));
+      const int direction = grid_graph_->getLayerDirection(init_layer);
+      if (cells[0].low() != cells[0].high()
+          && cells[1].low() != cells[1].high()) {
+        return nullptr;
+      }
+      if (direction == MetalLayer::H) {
+        if (cells[1].low() != cells[1].high()) {
+          return nullptr;
+        }
+        const int y = cells[1].low();
+        addNode(GRPoint(init_layer, cells[0].low(), y));
+        for (int x = cells[0].low(); x < cells[0].high(); x++) {
+          addEdge(GRPoint(init_layer, x, y), GRPoint(init_layer, x + 1, y));
+        }
+      } else {
+        if (cells[0].low() != cells[0].high()) {
+          return nullptr;
+        }
+        const int x = cells[0].low();
+        addNode(GRPoint(init_layer, x, cells[1].low()));
+        for (int y = cells[1].low(); y < cells[1].high(); y++) {
+          addEdge(GRPoint(init_layer, x, y), GRPoint(init_layer, x, y + 1));
+        }
+      }
+    }
+  }
+
+  if (nodes.empty()) {
+    return nullptr;
+  }
+
+  // BFS spanning tree; the restored geometry must be connected.
+  std::map<uint64_t, std::shared_ptr<GRTreeNode>> built;
+  std::queue<uint64_t> queue;
+  const uint64_t root_key = nodes.begin()->first;
+  auto root = std::make_shared<GRTreeNode>(nodes.begin()->second);
+  built[root_key] = root;
+  queue.push(root_key);
+  while (!queue.empty()) {
+    const uint64_t key = queue.front();
+    queue.pop();
+    for (const uint64_t neighbor_key : adjacency[key]) {
+      if (built.contains(neighbor_key)) {
+        continue;
+      }
+      auto node = std::make_shared<GRTreeNode>(nodes.at(neighbor_key));
+      built[key]->addChild(node);
+      built[neighbor_key] = std::move(node);
+      queue.push(neighbor_key);
+    }
+  }
+  if (built.size() != nodes.size()) {
+    return nullptr;
+  }
+  return root;
+}
+
+bool CUGR::restoreNetRoute(odb::dbNet* db_net, const GRoute& route)
+{
+  if (!design_ || route.empty()) {
+    return false;
+  }
+  auto it = db_net_map_.find(db_net);
+  if (it == db_net_map_.end()) {
+    return false;
+  }
+
+  std::shared_ptr<GRTreeNode> tree = buildTreeFromRoute(route);
+  if (!tree) {
+    return false;
+  }
+  // Every gcell/layer the restored tree occupies, for pin-coverage validation.
+  std::unordered_set<uint64_t> occupied;
+  GRTreeNode::preorder(tree, [&](const std::shared_ptr<GRTreeNode>& node) {
+    occupied.insert(grid_graph_->hashCell(*node));
+  });
+
+  GRNet* gr_net = it->second;
+  if (gr_net->getRoutingTree()) {
+    grid_graph_->removeTreeUsage(gr_net->getRoutingTree(),
+                                 gr_net->getNdrCosts());
+  }
+  // Refresh the pins from the restored netlist, like updateNet, but adopt the
+  // restored tree instead of queueing a reroute.
+  design_->updateNet(db_net);
+  const int idx = gr_net->getIndex();
+  const CUGRNet& base_net = design_->getAllNets()[idx];
+  gr_nets_[idx] = std::make_unique<GRNet>(base_net, grid_graph_.get());
+  GRNet* new_net = gr_nets_[idx].get();
+  db_net_map_[db_net] = new_net;
+
+  // Each pin must land on the restored tree; record the access point it uses so
+  // getITermsAccessPoints/updatePinAccessPoints stay in sync (as after a
+  // route). The old demand is already released, so a failure just falls back to
+  // reroute.
+  const std::vector<std::vector<GRPoint>>& pin_aps
+      = new_net->getPinAccessPoints();
+  for (int pin_index = 0; pin_index < new_net->getNumPins(); pin_index++) {
+    bool covered = false;
+    for (const GRPoint& candidate : pin_aps[pin_index]) {
+      if (occupied.contains(grid_graph_->hashCell(candidate))) {
+        new_net->addPreferredAccessPoint(
+            pin_index,
+            AccessPoint{
+                .point = candidate,
+                .layers = {candidate.getLayerIdx(), candidate.getLayerIdx()}});
+        covered = true;
+        break;
+      }
+    }
+    if (!covered) {
+      return false;
+    }
+  }
+
+  new_net->setRoutingTree(tree);
+  grid_graph_->addTreeUsage(tree, new_net->getNdrCosts());
+  return true;
+}
+
 void CUGR::removeNet(odb::dbNet* db_net)
 {
   if (!design_) {
@@ -1670,6 +1827,9 @@ void CUGR::saveCongestion()
 
 void CUGR::routeIncremental()
 {
+  // Always reflect only the current round; a stale list may hold nets
+  // destroyed since the previous round (e.g. by a journal restore).
+  rerouted_db_nets_.clear();
   if (nets_to_route_.empty()) {
     return;
   }
