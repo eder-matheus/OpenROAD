@@ -39,6 +39,7 @@ namespace grt {
 class Design;
 class GridGraph;
 class GRNet;
+class GRTreeNode;
 class BoxT;
 
 struct Constants
@@ -130,6 +131,10 @@ class CUGR
   void updateNet(odb::dbNet* net);
   void removeNet(odb::dbNet* net);
   void routeIncremental();
+  // Adopts an externally restored routing (journal restore): rebuilds the
+  // net's routing tree from the segments and swaps the grid-graph demand
+  // without scheduling a reroute. Returns false if the net must be rerouted.
+  bool restoreNetRoute(odb::dbNet* db_net, const GRoute& route);
 
   const std::vector<int>& getOriginalResources() const;
   void computeCongestionInformation();
@@ -155,6 +160,9 @@ class CUGR
   void demoteNonCriticalNets(float slack_th);
   float getNetSlack(odb::dbNet* net);
   void setInitialNetSlacks(const std::vector<int>& net_indices);
+  // Builds a routing tree spanning the segments' gcells; nullptr if the
+  // segments are malformed or disconnected.
+  std::shared_ptr<GRTreeNode> buildTreeFromRoute(const GRoute& route) const;
 
   /**
    * @brief Computes per-layer NDR demand / cost multipliers for a net.
