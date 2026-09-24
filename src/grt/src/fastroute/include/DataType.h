@@ -141,7 +141,8 @@ struct Edge  // An Edge is the routing track holder between two adjacent
   uint16_t real_cap;  // the real capacity without user adjustment
   int16_t last_usage;
   uint16_t ndr_overflow;  // number of NDR nets in congestion
-  bool used_grid_dirty;   // queued for used-grid reconciliation at the next run
+  // queued for used-grid reconciliation at the next run
+  bool used_grid_dirty : 1;
   bool est_usage_dirty : 1;
   bool history_dirty : 1;
   double est_usage;  // the estimated usage of the edge
