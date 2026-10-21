@@ -237,6 +237,8 @@ class CUGR
   // Debug (set_debug_level GRT verify_demand 1): recompute grid-graph demand
   // from every committed tree and report drift from the tracked demand.
   void verifyDemandConsistency(const char* tag);
+  // Debug group congestion_sources: splits overflow by wire and via source.
+  void reportCongestionSources(const char* stage, int iteration = -1);
 
   /**
    * @brief Computes per-layer NDR demand / cost multipliers for a net.
@@ -302,8 +304,6 @@ class CUGR
                    int iteration,
                    const RerouteOptions& options);
 
-  // Debug print after a maze pass: the total overflow (group rrr).
-  void debugPass(const char* stage, int iteration = -1);
   /**
    * @brief Stage 5 — iterative rip-up and re-route.
    *
@@ -398,7 +398,11 @@ class CUGR
   // The logging half of the hook; needs no GUI.
   void reportDebugNetSlack(const GRNet* net, CugrStage stage, int iteration);
   // Refresh parasitics as the next stage would, so the slack is current.
-  void refreshParasiticsForDebug();
+  // Returns false where it skips the refresh (see the definition).
+  bool refreshParasiticsForDebug();
+  // Debug prints after a maze pass: the total overflow (group rrr) and, after
+  // refreshing parasitics like reportDebugNetSlack, WNS and TNS (rrr_timing).
+  void debugPass(const char* stage, int iteration = -1);
   // True if a liberty library is loaded, i.e. slacks are meaningful.
   bool hasTiming() const;
 

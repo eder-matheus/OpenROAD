@@ -378,14 +378,16 @@ void CUGR::updateReroutedParasitics(est::ParasiticsService& estimator)
   parasitics_dirty_nets_.clear();
 }
 
-void CUGR::refreshParasiticsForDebug()
+bool CUGR::refreshParasiticsForDebug()
 {
-  if (incremental_routing_) {
-    return;
+  // Skipped where CUGR does no timing of its own: refreshing would then be
+  // the only extraction of the run and would move post-route timing.
+  if (critical_nets_percentage_ == 0 || incremental_routing_) {
+    return false;
   }
   auto* estimator = service_registry_->find<est::ParasiticsService>();
   if (estimator == nullptr) {
-    return;
+    return false;
   }
   // Mirrors updateNetSlacks' parasitics half, but leaves the dirty list and
   // full_slack_update_done_ alone so the real refresh still runs.
@@ -394,6 +396,7 @@ void CUGR::refreshParasiticsForDebug()
   } else {
     refreshDirtyParasitics(*estimator);
   }
+  return true;
 }
 
 float CUGR::criticalSlackThreshold() const
@@ -802,7 +805,9 @@ void CUGR::patternRoute(std::vector<int>& net_indices)
 
 void CUGR::patternRouteResAware(std::vector<int>& net_indices)
 {
-  if (!resistance_aware_ || critical_nets_percentage_ == 0) {
+  // Debug switch no_res_aware_stage skips this stage.
+  if (!resistance_aware_ || critical_nets_percentage_ == 0
+      || logger_->debugCheck(GRT, "no_res_aware_stage", 1)) {
     return;
   }
   if (verbose_) {
@@ -1095,15 +1100,18 @@ std::vector<odb::dbNet*> CUGR::route(bool incremental)
   }
 
   patternRoute(net_indices);
+  reportCongestionSources("stage 1 pattern");
 
   if (!incremental) {
     // Stage 2: resistance-aware re-route of the critical nets (full route
     // only, not congestion-gated; it ignores the congested set).
     patternRouteResAware(net_indices);
+    reportCongestionSources("stage 2 res-aware");
     updateCongestedNets(net_indices);
   }
 
   patternRouteWithDetours(net_indices);
+  reportCongestionSources("stage 3 detours");
   if (!incremental) {
     updateCongestedNets(net_indices);
   }
@@ -1113,6 +1121,7 @@ std::vector<odb::dbNet*> CUGR::route(bool incremental)
     logger_->report("Stage 4: Maze routing on sparsified graph.");
   }
   mazeRoute(net_indices, CugrStage::mazeRoute, /* iteration */ 0, {});
+  reportCongestionSources("stage 4 maze");
   debugPass("stage 4");
   if (!incremental) {
     updateCongestedNets(net_indices);
@@ -1294,19 +1303,14 @@ void CUGR::reportDebugNetSlack(const GRNet* net,
   if (!hasTiming()) {
     detail = "slack unavailable (no timing)";
   } else {
-    // Skipped where CUGR does no timing of its own: refreshing would then be
-    // the only extraction of the run and would move post-route timing.
-    const bool refreshed = critical_nets_percentage_ != 0;
-    if (refreshed) {
-      // Every rerouted net, not just this one: its slack runs through them.
-      refreshParasiticsForDebug();
-    }
+    // Every rerouted net, not just this one: its slack runs through them.
+    const bool refreshed = refreshParasiticsForDebug();
     const float sta_slack = getNetSlack(net->getDbNet());
     // What CUGR's ordering and critical-net decisions read.
     const float cugr_slack = net->getSlack();
     if (sta_slack >= sta::INF) {
       detail = "no timing path";
-    } else if (!refreshed) {
+    } else if (critical_nets_percentage_ == 0) {
       detail = fmt::format(
           "slack = {:.2f} ps (cugr tracks no slack at "
           "-critical_nets_percentage 0)",
@@ -1323,7 +1327,7 @@ void CUGR::reportDebugNetSlack(const GRNet* net,
           cugr_slack * 1e12,
           (sta_slack - cugr_slack) * 1e12);
     }
-    if (!refreshed || incremental_routing_) {
+    if (!refreshed) {
       detail += " (parasitics not refreshed)";
     }
   }
@@ -1373,17 +1377,35 @@ void CUGR::debugNetTopology(const CugrStage stage, const int iteration)
   debug_.renderer->drawAndPause(std::move(frame));
 }
 
+// "stage" or "stage iteration", built only when a debug group prints it.
+static std::string debugTag(const char* stage, const int iteration)
+{
+  return iteration < 0 ? std::string(stage)
+                       : fmt::format("{} {}", stage, iteration);
+}
+
 void CUGR::debugPass(const char* stage, const int iteration)
 {
-  // debugPrint builds the tag only when the group prints.
   debugPrint(logger_,
              GRT,
              "rrr",
              1,
              "{}: total overflow {}.",
-             iteration < 0 ? std::string(stage)
-                           : fmt::format("{} {}", stage, iteration),
+             debugTag(stage, iteration),
              totalOverflow());
+  if (!logger_->debugCheck(GRT, "rrr_timing", 1) || !hasTiming()) {
+    return;
+  }
+  const bool refreshed = refreshParasiticsForDebug();
+  debugPrint(logger_,
+             GRT,
+             "rrr_timing",
+             1,
+             "{}: WNS {:.4g} TNS {:.5g}{}",
+             debugTag(stage, iteration),
+             sta_->worstSlack(sta::MinMax::max()),
+             sta_->totalNegativeSlack(sta::MinMax::max()),
+             refreshed ? "" : " (parasitics not refreshed)");
 }
 
 void CUGR::iterativeRRR(std::vector<int>& net_indices,
@@ -1494,6 +1516,7 @@ void CUGR::iterativeRRR(std::vector<int>& net_indices,
       overflow_change
           += mazeRoute(net_indices, CugrStage::iterativeRRR, i, options);
     }
+    reportCongestionSources("rrr iteration", i);
     debugPass("rrr iteration", i);
 
     stagnant_passes
@@ -2861,6 +2884,258 @@ void CUGR::saveCongestion()
       }
     }
   }
+}
+
+void CUGR::reportCongestionSources(const char* stage, const int iteration)
+{
+  if (incremental_routing_
+      || !logger_->debugCheck(GRT, "congestion_sources", 1)) {
+    return;
+  }
+  const std::string tag = debugTag(stage, iteration);
+  // Demand per edge by source: wires, pin-access, bend or stack via pads.
+  enum Source
+  {
+    kWire,
+    kPinVia,
+    kBendVia,
+    kStackVia,
+    kNumSources
+  };
+  const int num_layers = grid_graph_->getNumLayers();
+  const int x_size = grid_graph_->getXSize();
+  const int y_size = grid_graph_->getYSize();
+  const size_t num_edges = static_cast<size_t>(num_layers) * x_size * y_size;
+  std::array<std::vector<CapacityT>, kNumSources> demand;
+  for (auto& source : demand) {
+    source.assign(num_edges, 0.0);
+  }
+  auto overflowed = [&](int layer, PointT edge) {
+    const GraphEdge e = grid_graph_->getEdge(layer, edge.x(), edge.y());
+    return e.demand > e.capacity;
+  };
+  // Owner criticality at the start of the pass; res-aware nets are critical.
+  const bool demoted_any = std::ranges::any_of(gr_nets_, [](const auto& net) {
+    return net != nullptr && net->getSlack() >= kDemotedSlack;
+  });
+  const float slack_threshold
+      = demoted_any ? kDemotedSlack : criticalSlackThreshold();
+  // Without a critical percentage no net is routed as critical.
+  auto is_critical = [&](const GRNet& net) {
+    return net.isResAware()
+           || (critical_nets_percentage_ != 0
+               && (demoted_any ? net.getSlack() < slack_threshold
+                               : net.getSlack() <= slack_threshold));
+  };
+  enum Group
+  {
+    kCritical,
+    kNonCritical,
+    kNumGroups
+  };
+  struct GroupStats
+  {
+    // Avoidable (bend and stack) pad demand per edge.
+    std::vector<CapacityT> pad;
+    int nets = 0;
+    long vias = 0;
+    // Vias above the pin access of their column: the climbs the router chose.
+    long climbs = 0;
+    double on_overflowed = 0.0;
+    double without = 0.0;
+  };
+  std::array<GroupStats, kNumGroups> groups;
+  for (auto& group : groups) {
+    group.pad.assign(num_edges, 0.0);
+  }
+  int res_aware_nets = 0;
+
+  int selected_nets = 0;
+  int wire_selected = 0;
+  int via_owners = 0;
+  for (const auto& net : gr_nets_) {
+    if (net == nullptr || !net->getRoutingTree()) {
+      continue;
+    }
+    GroupStats& group = groups[is_critical(*net) ? kCritical : kNonCritical];
+    group.nets++;
+    res_aware_nets += net->isResAware();
+    const auto& costs = net->getNdrCosts();
+    const auto pin_tops = pinAccessTops(*net);
+    bool on_overflowed_wire = false;
+    bool avoidable_pad_on_overflow = false;
+    grid_graph_->forEachTreeWireEdge(
+        net->getRoutingTree(),
+        net->isAdopted(),
+        [&](int layer, PointT cell, bool wrong_way) {
+          const double factor = net->getNdrCost(layer);
+          if (wrong_way) {
+            grid_graph_->forEachWrongWayFlankEdge(
+                layer, cell, [&](PointT edge, CapacityT pad) {
+                  demand[kWire][grid_graph_->edgeFlatIndex(
+                      layer, edge.x(), edge.y())] += pad * factor;
+                });
+            return;
+          }
+          demand[kWire][grid_graph_->edgeFlatIndex(layer, cell.x(), cell.y())]
+              += factor;
+          // The wire-only test, to compare with the relief-score selection.
+          on_overflowed_wire |= overflowed(layer, cell);
+        });
+    grid_graph_->forEachViaColumn(
+        net->getRoutingTree(), [&](PointT loc, int low, int high) {
+          const int access_top = pinAccessTop(pin_tops, loc);
+          group.vias += high - low;
+          group.climbs += std::max(0, high - std::max(low, access_top));
+          const Source chosen = high - low == 1 ? kBendVia : kStackVia;
+          grid_graph_->forEachStackFlankEdge(
+              low,
+              high,
+              loc,
+              costs,
+              [&](int layer, PointT edge, CapacityT pad, double factor) {
+                const Source source = layer <= access_top ? kPinVia : chosen;
+                const size_t index
+                    = grid_graph_->edgeFlatIndex(layer, edge.x(), edge.y());
+                demand[source][index] += pad * factor;
+                if (source == kPinVia) {
+                  return;
+                }
+                group.pad[index] += pad * factor;
+                if (layer >= constants_.min_routing_layer
+                    && overflowed(layer, edge)) {
+                  avoidable_pad_on_overflow = true;
+                }
+              });
+        });
+    const bool selected = computeReliefScore(*net, 1.0) > 0.0;
+    selected_nets += selected;
+    wire_selected += on_overflowed_wire;
+    via_owners += avoidable_pad_on_overflow;
+  }
+
+  // Overflow as sources are added: pin access, wires, bends, then stacks.
+  double total_overflow = 0.0;
+  double max_overflow = 0.0;
+  std::array<double, kNumSources> ladder{};
+  std::array<double, kNumSources> on_overflowed{};
+  // Overflow left with one source removed: the bound on fixing that source.
+  std::array<double, kNumSources> without{};
+  int overflowed_edges = 0;
+  int wire_only_edges = 0;
+  int via_only_edges = 0;
+  double max_mismatch = 0.0;
+  for (int layer = constants_.min_routing_layer; layer < num_layers; layer++) {
+    const bool horizontal
+        = grid_graph_->getLayerDirection(layer) == MetalLayer::H;
+    const int x_max = horizontal ? x_size - 1 : x_size;
+    const int y_max = horizontal ? y_size : y_size - 1;
+    for (int x = 0; x < x_max; x++) {
+      for (int y = 0; y < y_max; y++) {
+        const GraphEdge edge = grid_graph_->getEdge(layer, x, y);
+        const size_t index = grid_graph_->edgeFlatIndex(layer, x, y);
+        const double wire = demand[kWire][index];
+        const double pin = demand[kPinVia][index];
+        const double bend = demand[kBendVia][index];
+        const double stack = demand[kStackVia][index];
+        max_mismatch = std::max(
+            max_mismatch, std::abs(wire + pin + bend + stack - edge.demand));
+        const double overflow = edge.demand - edge.capacity;
+        if (overflow <= 0) {
+          continue;
+        }
+        overflowed_edges++;
+        total_overflow += overflow;
+        max_overflow = std::max(max_overflow, overflow);
+        wire_only_edges += pin + bend + stack == 0;
+        via_only_edges += wire == 0;
+        ladder[kPinVia] += std::max(0.0, pin - edge.capacity);
+        ladder[kWire] += std::max(0.0, pin + wire - edge.capacity);
+        ladder[kBendVia] += std::max(0.0, pin + wire + bend - edge.capacity);
+        ladder[kStackVia] += overflow;
+        for (int source = 0; source < kNumSources; source++) {
+          const double source_demand = demand[source][index];
+          on_overflowed[source] += source_demand;
+          without[source] += std::max(0.0, overflow - source_demand);
+        }
+        for (GroupStats& group : groups) {
+          const double pad = group.pad[index];
+          group.without += std::max(0.0, overflow - pad);
+          group.on_overflowed += pad;
+        }
+      }
+    }
+  }
+  const double on_overflowed_total
+      = std::max(1e-12,
+                 on_overflowed[kWire] + on_overflowed[kPinVia]
+                     + on_overflowed[kBendVia] + on_overflowed[kStackVia]);
+  auto share = [&](Source source) {
+    return 100.0 * on_overflowed[source] / on_overflowed_total;
+  };
+  auto print = [&](const std::string& line) {
+    debugPrint(logger_, GRT, "congestion_sources", 1, "[{}] {}", tag, line);
+  };
+  print(
+      fmt::format("overflow total={:.2f} max={:.2f} on {} edges "
+                  "(wire-only={}, wire+via={}, via-only={}); vias={}; "
+                  "routed nets={}; demand mismatch={:.2g}",
+                  total_overflow,
+                  max_overflow,
+                  overflowed_edges,
+                  wire_only_edges,
+                  overflowed_edges - wire_only_edges - via_only_edges,
+                  via_only_edges,
+                  groups[kCritical].vias + groups[kNonCritical].vias,
+                  groups[kCritical].nets + groups[kNonCritical].nets,
+                  max_mismatch));
+  print(
+      fmt::format("overflow by source: pin-access vias={:.2f} +wires={:.2f} "
+                  "+bend vias={:.2f} +stack vias={:.2f}",
+                  ladder[kPinVia],
+                  ladder[kWire],
+                  ladder[kBendVia],
+                  ladder[kStackVia]));
+  print(
+      fmt::format("demand on overflowed edges: wires={:.2f} ({:.0f}%) "
+                  "pin-access vias={:.2f} ({:.0f}%) bend vias={:.2f} "
+                  "({:.0f}%) stack vias={:.2f} ({:.0f}%)",
+                  on_overflowed[kWire],
+                  share(kWire),
+                  on_overflowed[kPinVia],
+                  share(kPinVia),
+                  on_overflowed[kBendVia],
+                  share(kBendVia),
+                  on_overflowed[kStackVia],
+                  share(kStackVia)));
+  print(
+      fmt::format("overflow without: pin-access vias={:.2f} wires={:.2f} "
+                  "bend vias={:.2f} stack vias={:.2f}",
+                  without[kPinVia],
+                  without[kWire],
+                  without[kBendVia],
+                  without[kStackVia]));
+  auto group_line = [&](const char* name, const GroupStats& group) {
+    return fmt::format(
+        "{} nets={}: vias={} climbs={} avoidable pads on overflowed "
+        "edges={:.2f} overflow without them={:.2f}",
+        name,
+        group.nets,
+        group.vias,
+        group.climbs,
+        group.on_overflowed,
+        group.without);
+  };
+  print(fmt::format("{} ({} res-aware); {}",
+                    group_line("critical", groups[kCritical]),
+                    res_aware_nets,
+                    group_line("non-critical", groups[kNonCritical])));
+  print(
+      fmt::format("nets: selected={} (with a wire on an overflowed edge={}) "
+                  "owning avoidable pads on overflowed edges={}",
+                  selected_nets,
+                  wire_selected,
+                  via_owners));
 }
 
 void CUGR::verifyDemandConsistency(const char* tag)
